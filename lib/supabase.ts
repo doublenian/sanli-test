@@ -377,33 +377,3 @@ export const training = {
     return data;
   },
 };
-
-// 用户设置相关函数
-export const userSettings = {
-  // 获取用户设置
-  async getUserSettings(userId: string) {
-    const { data, error } = await supabase
-      .from('user_settings')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
-  },
-
-  // 更新用户设置
-  async updateUserSettings(userId: string, settings: Partial<any>) {
-    const { data, error } = await supabase
-      .from('user_settings')
-      .upsert({
-        user_id: userId,
-        ...settings,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-};

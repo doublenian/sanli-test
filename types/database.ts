@@ -319,41 +319,6 @@ export interface Database {
           created_at?: string | null;
         };
       };
-      user_settings: {
-        Row: {
-          user_id: string;
-          font_size: string | null;
-          voice_enabled: boolean | null;
-          language: string | null;
-          theme: string | null;
-          auto_play_voice: boolean | null;
-          show_hints: boolean | null;
-          created_at: string | null;
-          updated_at: string | null;
-        };
-        Insert: {
-          user_id: string;
-          font_size?: string | null;
-          voice_enabled?: boolean | null;
-          language?: string | null;
-          theme?: string | null;
-          auto_play_voice?: boolean | null;
-          show_hints?: boolean | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Update: {
-          user_id?: string;
-          font_size?: string | null;
-          voice_enabled?: boolean | null;
-          language?: string | null;
-          theme?: string | null;
-          auto_play_voice?: boolean | null;
-          show_hints?: boolean | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-      };
       user_study_progress: {
         Row: {
           id: string;

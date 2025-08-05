@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { questions, exams, practice, wrongQuestions, training, userSettings } from '@/lib/supabase';
+import { questions, exams, practice, wrongQuestions, training } from '@/lib/supabase';
 import { Question } from '@/types/question';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Hook for managing questions data
 export function useQuestions() {
@@ -271,54 +272,52 @@ export function useTraining() {
   };
 }
 
+// 本地设置存储键
+const USER_SETTINGS_KEY = 'user_settings';
+
+// 默认设置
+const DEFAULT_SETTINGS = {
+  font_size: 'large',
+  voice_enabled: true,
+  language: 'chinese',
+  theme: 'light',
+  auto_play_voice: true,
+  show_hints: true,
+};
+
 // Hook for managing user settings
 export function useUserSettings() {
-  const { user } = useAuth();
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      loadSettings();
-    } else {
-      // Load default settings for guest users
-      setSettings({
-        font_size: 'large',
-        voice_enabled: true,
-        language: 'chinese',
-        theme: 'light',
-        auto_play_voice: true,
-        show_hints: true,
-      });
-      setLoading(false);
-    }
-  }, [user]);
+    loadSettings();
+  }, []);
 
   const loadSettings = async () => {
-    if (!user) return;
-    
     try {
-      const data = await userSettings.getUserSettings(user.id);
-      setSettings(data);
+      const savedSettings = await AsyncStorage.getItem(USER_SETTINGS_KEY);
+      if (savedSettings) {
+        const parsedSettings = JSON.parse(savedSettings);
+        setSettings({ ...DEFAULT_SETTINGS, ...parsedSettings });
+      } else {
+        setSettings(DEFAULT_SETTINGS);
+      }
     } catch (error) {
-      console.error('Error loading user settings:', error);
+      console.error('Error loading settings from storage:', error);
+      setSettings(DEFAULT_SETTINGS);
     } finally {
       setLoading(false);
     }
   };
 
   const updateSettings = async (newSettings: Partial<any>) => {
-    if (!user) {
-      // For guest users, just update local state
-      setSettings(prev => ({ ...prev, ...newSettings }));
-      return;
-    }
-    
     try {
-      const result = await userSettings.updateUserSettings(user.id, newSettings);
-      setSettings(result);
+      const updatedSettings = { ...settings, ...newSettings };
+      setSettings(updatedSettings);
+      await AsyncStorage.setItem(USER_SETTINGS_KEY, JSON.stringify(updatedSettings));
     } catch (error) {
-      console.error('Error updating user settings:', error);
+      console.error('Error saving settings to storage:', error);
     }
   };
 
@@ -326,6 +325,5 @@ export function useUserSettings() {
     settings,
     loading,
     updateSettings,
-    refreshSettings: loadSettings,
   };
 }
