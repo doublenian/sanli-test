@@ -190,7 +190,8 @@ export default function ExamScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <>
+      <SafeAreaView style={styles.container}>
       {/* Header with timer and progress */}
       <View style={styles.header}>
         <View style={styles.timerContainer}>
@@ -325,7 +326,7 @@ export default function ExamScreen() {
           </TouchableOpacity>
         )}
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
 
       {/* Finish Exam Dialog */}
       <Dialog
@@ -338,6 +339,7 @@ export default function ExamScreen() {
         confirmText="确认交卷"
         type="warning"
       />
+    </>
   );
 }
 
