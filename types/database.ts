@@ -434,12 +434,12 @@ export interface Database {
           p_user_id: string;
         };
         Returns: {
-          total_exams: number;
-          total_passed: number;
-          highest_score: number;
-          average_score: number;
+          total_exams: string;
+          total_passed: string;
+          highest_score: string;
+          average_score: string;
           total_study_time: string;
-          pass_rate: number;
+          pass_rate: string;
         };
       };
       get_user_wrong_questions: {
