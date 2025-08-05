@@ -22,6 +22,7 @@ export default function MemoryTrainingScreen() {
       setConfig(trainingData.memory.config || {});
       setTimeLeft(trainingData.memory.config?.memorizeTime || 10);
     }
+  }, [trainingData]);
 
   useEffect(() => {
     if ((gameState === 'memorize' || gameState === 'distraction') && timeLeft > 0) {
