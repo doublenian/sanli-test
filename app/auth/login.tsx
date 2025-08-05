@@ -27,6 +27,8 @@ export default function LoginScreen() {
       
       if (error.message && error.message.includes('Invalid login credentials')) {
         errorMessage = '邮箱或密码错误，请检查后重试。如果您还没有账号，请点击下方"立即注册"按钮创建账号。';
+      } else if (error.message && error.message.includes('email_not_confirmed')) {
+        errorMessage = '邮箱尚未验证，请检查您的邮箱（包括垃圾邮件文件夹）并点击确认链接完成验证';
       } else if (error.message) {
         errorMessage = error.message;
       }
