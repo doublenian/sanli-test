@@ -27,37 +27,50 @@ export default function QuestionScreen() {
   }, [currentIndex, practiceQuestions]);
 
   const loadQuestions = async () => {
+    console.log('Loading questions for mode:', mode);
     try {
       if (mode === 'wrong') {
         const wrongQuestions = await storage.getWrongQuestions();
+        console.log('Loaded wrong questions:', wrongQuestions.length);
         setPracticeQuestions(wrongQuestions);
       } else if (mode === 'favorites') {
         const favoriteQuestions = await storage.getFavoriteQuestions();
+        console.log('Loaded favorite questions:', favoriteQuestions.length);
         setPracticeQuestions(favoriteQuestions);
       } else if (mode === 'random') {
         const data = await questions.getRandomQuestions(20);
+        console.log('Loaded random questions from DB:', data?.length || 0);
         const formattedQuestions = formatQuestionsFromDB(data);
+        console.log('Formatted random questions:', formattedQuestions.length);
         setPracticeQuestions(formattedQuestions);
       } else {
         const data = await questions.getSequentialQuestions(0, 20);
+        console.log('Loaded sequential questions from DB:', data?.length || 0);
         const formattedQuestions = formatQuestionsFromDB(data);
+        console.log('Formatted sequential questions:', formattedQuestions.length);
         setPracticeQuestions(formattedQuestions);
       }
     } catch (error) {
       console.error('Failed to load questions:', error);
+      // Set empty array to prevent infinite loading
+      setPracticeQuestions([]);
     } finally {
       setLoading(false);
     }
   };
 
   const formatQuestionsFromDB = (data: any[]): Question[] => {
+    if (!data || data.length === 0) {
+      return [];
+    }
+    
     return data.map(q => ({
       id: q.id,
       type: q.type as 'judgment' | 'multiple_choice',
       category: getCategoryFromId(q.category_id) as 'memory' | 'judgment' | 'reaction',
       question: q.question_text,
       options: q.options,
-      correctAnswer: q.type === 'judgment' ? q.correct_answer === 'true' : parseInt(q.correct_answer),
+      correctAnswer: q.type === 'judgment' ? (q.correct_answer === 'true') : parseInt(q.correct_answer),
       explanation: q.explanation,
       imageUrl: q.image_url
     }));
@@ -138,8 +151,37 @@ export default function QuestionScreen() {
   if (!currentQuestion) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>没有可用题目</Text>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.8}
+          >
+            <ArrowLeft size={24} color="#1E40AF" strokeWidth={2} />
+          </TouchableOpacity>
+          
+          <Text style={styles.headerTitle}>
+            {mode === 'wrong' ? '错题练习' : mode === 'random' ? '随机练习' : '顺序练习'}
+          </Text>
+
+          <View style={styles.headerSpacer} />
+        </View>
+        
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyTitle}>没有可用题目</Text>
+          <Text style={styles.emptyDescription}>
+            {mode === 'wrong' && '错题本为空，请先进行练习添加错题。'}
+            {mode === 'favorites' && '收藏夹为空，请先收藏一些题目。'}
+            {mode === 'sequential' && '题库数据加载失败，请重试。'}
+            {mode === 'random' && '题库数据加载失败，请重试。'}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => router.back()}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.retryButtonText}>返回练习</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -180,7 +222,7 @@ export default function QuestionScreen() {
             <View 
               style={[
                 styles.progressFill, 
-                { width: `${((currentIndex + 1) / questions.length) * 100}%` }
+                { width: `${((currentIndex + 1) / practiceQuestions.length) * 100}%` }
               ]} 
             />
           </View>
@@ -425,6 +467,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerSpacer: {
+    width: 48,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  emptyDescription: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  retryButton: {
+    backgroundColor: '#1E40AF',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+  },
+  retryButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
