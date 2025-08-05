@@ -434,12 +434,12 @@ export interface Database {
           p_user_id: string;
         };
         Returns: {
-          total_exams: string;
-          total_passed: string;
-          highest_score: string;
-          average_score: string;
-          total_study_time: string;
-          pass_rate: string;
+          total_exams: string;     // COUNT(*) returns bigint -> string
+          total_passed: string;    // COUNT(*) FILTER returns bigint -> string
+          highest_score: number;   // MAX(score) returns integer -> number
+          average_score: string;   // AVG(score) returns numeric -> string
+          total_study_time: string; // SUM(time_spent) returns bigint -> string
+          pass_rate: string;       // ROUND(...) returns numeric -> string
         };
       };
       get_user_wrong_questions: {
