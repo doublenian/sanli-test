@@ -45,7 +45,11 @@ export default function RegisterScreen() {
       });
 
       Alert.alert(
-        '注册成功',
+        if (error.message.includes('over_email_send_rate_limit')) {
+          setError('发送邮件过于频繁，请等待50秒后再试');
+        } else {
+          setError(error.message);
+        }
         '账号注册成功！请登录开始使用。',
         [{ text: '立即登录', onPress: () => router.replace('/auth/login') }]
       );
