@@ -499,21 +499,6 @@ export interface Database {
           category_name: string;
         }[];
       };
-      get_user_recent_exams: {
-        Args: {
-          p_user_id: string;
-          p_limit?: number;
-        };
-        Returns: {
-          exam_id: string;
-          exam_type: string;
-          score: number;
-          is_passed: boolean;
-          time_spent: number;
-          completed_at: string;
-          wrong_questions_count: number;
-        }[];
-      };
       complete_exam: {
         Args: {
           p_exam_id: string;
