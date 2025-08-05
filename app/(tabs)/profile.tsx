@@ -4,27 +4,106 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Trophy, Clock, BookOpen, Circle as XCircle, TrendingUp, Calendar, LogOut } from 'lucide-react-native';
 import { useAuth } from '@/components/AuthProvider';
+import { useExams, useWrongQuestions, useTraining } from '@/hooks/useSupabaseData';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const { examHistory, examStats, loading: examLoading } = useExams();
+  const { wrongQuestions, loading: wrongQuestionsLoading } = useWrongQuestions();
+  const { trainingHistory, loading: trainingLoading } = useTraining();
 
-  const userStats = {
-    totalExams: 15,
-    highestScore: 95,
-    averageScore: 87,
-    totalStudyTime: '8小时30分钟',
-    errorQuestions: 8,
-    streakDays: 7,
-  };
+  // Calculate user stats from real data
+  const userStats = React.useMemo(() => {
+    if (!examStats || examLoading) {
+      return {
+        totalExams: 0,
+        highestScore: 0,
+        averageScore: 0,
+        totalStudyTime: '0小时0分钟',
+        errorQuestions: 0,
+        streakDays: 0,
+      };
+    }
 
-  const recentExams = [
-    { date: '2025-01-15', score: 95, time: '18分钟', status: '合格' },
-    { date: '2025-01-14', score: 85, time: '19分钟', status: '不合格' },
-    { date: '2025-01-13', score: 90, time: '17分钟', status: '合格' },
-    { date: '2025-01-12', score: 88, time: '20分钟', status: '不合格' },
-    { date: '2025-01-11', score: 92, time: '16分钟', status: '合格' },
-  ];
+    // Calculate total study time from training history
+    const totalMinutes = trainingHistory?.reduce((total, record) => {
+      return total + Math.floor(record.duration / 60);
+    }, 0) || 0;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const totalStudyTime = `${hours}小时${minutes}分钟`;
+
+    // Calculate streak days (simplified - consecutive days with exams)
+    const streakDays = calculateStreakDays(examHistory || []);
+
+    return {
+      totalExams: examStats.total_exams || 0,
+      highestScore: examStats.highest_score || 0,
+      averageScore: Math.round(examStats.average_score || 0),
+      totalStudyTime,
+      errorQuestions: wrongQuestions?.length || 0,
+      streakDays,
+    };
+  }, [examStats, examLoading, trainingHistory, examHistory, wrongQuestions]);
+
+  // Format recent exams data
+  const recentExams = React.useMemo(() => {
+    if (!examHistory) return [];
+    
+    return examHistory.slice(0, 5).map(exam => ({
+      date: new Date(exam.completed_at).toISOString().split('T')[0],
+      score: exam.score,
+      time: formatDuration(exam.time_spent),
+      status: exam.is_passed ? '合格' : '不合格'
+    }));
+  }, [examHistory]);
+
+  // Helper function to calculate streak days
+  function calculateStreakDays(exams: any[]): number {
+    if (!exams || exams.length === 0) return 0;
+    
+    const sortedExams = [...exams].sort((a, b) => 
+      new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
+    );
+    
+    let streak = 0;
+    let currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    
+    for (const exam of sortedExams) {
+      const examDate = new Date(exam.completed_at);
+      examDate.setHours(0, 0, 0, 0);
+      
+      const daysDiff = Math.floor((currentDate.getTime() - examDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysDiff === streak) {
+        streak++;
+        currentDate = examDate;
+      } else if (daysDiff > streak) {
+        break;
+      }
+    }
+    
+    return streak;
+  }
+
+  // Helper function to format duration
+  function formatDuration(seconds: number): string {
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes}分钟`;
+  }
+
+  // Show loading state
+  if (examLoading || wrongQuestionsLoading || trainingLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>加载用户数据中...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -147,9 +226,285 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.actionsContainer}>
-          <View style={styles.quickActionsContainer}>
+        {/* Quick Actions - only show if user has data */}
+        {(userStats.totalExams > 0 || userStats.errorQuestions > 0) && (
+          <View style={styles.actionsContainer}>
+            <View style={styles.quickActionsContainer}>
+              <TouchableOpacity
+                style={[styles.quickActionButton, { backgroundColor: '#DC2626' }]}
+                onPress={() => router.push('/errors')}
+                activeOpacity={0.8}
+              >
+                <XCircle size={24} color="#FFFFFF" strokeWidth={2} />
+                <Text style={styles.quickActionText}>错题本 ({userStats.errorQuestions})</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.quickActionButton, { backgroundColor: '#1E40AF' }]}
+                onPress={() => router.push('/exam')}
+                activeOpacity={0.8}
+              >
+                <Trophy size={24} color="#FFFFFF" strokeWidth={2} />
+                <Text style={styles.quickActionText}>模拟考试</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#64748B',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  header: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 30,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  achievementCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  achievementTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  achievementGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  achievementItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  achievementNumber: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  achievementLabel: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  examHistoryCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  examHistoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  examHistoryTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  viewAllText: {
+    fontSize: 16,
+    color: '#1E40AF',
+    fontWeight: '500',
+  },
+  examList: {
+    gap: 12,
+  },
+  examItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+  },
+  examDate: {
+    flex: 2,
+  },
+  examDateText: {
+    fontSize: 16,
+    color: '#1E293B',
+    fontWeight: '500',
+  },
+  examTimeText: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  examScore: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  examScoreText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  examStatus: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  examStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  quickActionsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    gap: 12,
+  },
+  quickActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  quickActionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  actionsContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  authSection: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  userInfo: {
+    alignItems: 'center',
+  },
+  userEmail: {
+    fontSize: 16,
+    color: '#64748B',
+    marginBottom: 16,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  signOutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#DC2626',
+    marginLeft: 8,
+  },
+  loginPromptButton: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#93C5FD',
+  },
+  loginPromptText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E40AF',
+  },
+});
           <TouchableOpacity
             style={[styles.quickActionButton, { backgroundColor: '#DC2626' }]}
             onPress={() => router.push('/errors')}
