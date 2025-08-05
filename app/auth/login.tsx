@@ -3,10 +3,13 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Eye, EyeOff, User, Lock } from 'lucide-react-native';
+import { Toast } from '@/components/Toast';
+import { useToast } from '@/hooks/useToast';
 import { auth } from '@/lib/supabase';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { toast, showToast, hideToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -14,7 +17,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('提示', '请输入邮箱和密码');
+      showToast('请输入邮箱和密码', 'error');
       return;
     }
 
@@ -22,6 +25,7 @@ export default function LoginScreen() {
     try {
       await auth.signIn(email, password);
       router.replace('/(tabs)');
+      showToast('登录成功！', 'success');
     } catch (error: any) {
       let errorMessage = '请检查邮箱和密码是否正确';
       
@@ -33,7 +37,7 @@ export default function LoginScreen() {
         errorMessage = error.message;
       }
       
-      Alert.alert('登录失败', errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -41,6 +45,12 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>

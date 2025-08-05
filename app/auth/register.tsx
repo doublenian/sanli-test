@@ -3,10 +3,13 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, User, Mail, Lock, Phone, Calendar } from 'lucide-react-native';
+import { Toast } from '@/components/Toast';
+import { useToast } from '@/hooks/useToast';
 import { auth } from '@/lib/supabase';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { toast, showToast, hideToast } = useToast();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -21,17 +24,17 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     // Validation
     if (!formData.username || !formData.email || !formData.password) {
-      Alert.alert('提示', '请填写必填信息：用户名、邮箱、密码');
+      showToast('请填写必填信息：用户名、邮箱、密码', 'error');
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      Alert.alert('提示', '两次输入的密码不一致');
+      showToast('两次输入的密码不一致', 'error');
       return;
     }
 
     if (formData.password.length < 6) {
-      Alert.alert('提示', '密码长度至少6位');
+      showToast('密码长度至少6位', 'error');
       return;
     }
 
@@ -44,11 +47,10 @@ export default function RegisterScreen() {
         phone: formData.phone || undefined,
       });
 
-      Alert.alert(
-        '注册成功',
-        '账号注册成功！请登录开始使用。',
-        [{ text: '立即登录', onPress: () => router.replace('/auth/login') }]
-      );
+      showToast('账号注册成功！请登录开始使用', 'success');
+      setTimeout(() => {
+        router.replace('/auth/login');
+      }, 2000);
     } catch (error: any) {
       let errorMessage = '注册过程中出现错误，请重试';
       if (error.message && error.message.includes('over_email_send_rate_limit')) {
@@ -58,7 +60,7 @@ export default function RegisterScreen() {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      Alert.alert('注册失败', errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -70,6 +72,12 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
