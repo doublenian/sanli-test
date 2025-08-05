@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Clock, CircleCheck as CheckCircle, X } from 'lucide-react-native';
 import { getRandomQuestions } from '@/data/questions';
 import { storage } from '@/utils/storage';
 import { Question } from '@/types/question';
+import { Dialog } from '@/components/Dialog';
 
 export default function ExamScreen() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function ExamScreen() {
   const [answers, setAnswers] = useState<(string | number | null)[]>(new Array(20).fill(null));
   const [timeLeft, setTimeLeft] = useState(20 * 60); // 20 minutes in seconds
   const [showResult, setShowResult] = useState(false);
+  const [showFinishDialog, setShowFinishDialog] = useState(false);
 
   const currentQuestion = questions[currentQuestionIndex];
 
@@ -93,14 +95,16 @@ export default function ExamScreen() {
   };
 
   const confirmFinish = () => {
-    Alert.alert(
-      '确认交卷',
-      '您确定要提交考试吗？提交后将无法修改答案。',
-      [
-        { text: '继续答题', style: 'cancel' },
-        { text: '确认交卷', onPress: finishExam },
-      ]
-    );
+    setShowFinishDialog(true);
+  };
+
+  const handleFinishConfirm = () => {
+    setShowFinishDialog(false);
+    finishExam();
+  };
+
+  const handleFinishCancel = () => {
+    setShowFinishDialog(false);
   };
 
   if (showResult) {
@@ -322,6 +326,18 @@ export default function ExamScreen() {
         )}
       </View>
     </SafeAreaView>
+
+      {/* Finish Exam Dialog */}
+      <Dialog
+        visible={showFinishDialog}
+        title="确认交卷"
+        message="您确定要提交考试吗？提交后将无法修改答案。"
+        onCancel={handleFinishCancel}
+        onConfirm={handleFinishConfirm}
+        cancelText="继续答题"
+        confirmText="确认交卷"
+        type="warning"
+      />
   );
 }
 
