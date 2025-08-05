@@ -120,13 +120,19 @@ export const questions = {
 
   // 获取顺序题目
   async getSequentialQuestions(startIndex: number = 0, count: number = 20, categoryId?: string) {
-    const { data, error } = await supabase
+    let query = supabase
       .from('questions')
       .select('*')
       .eq('is_active', true)
-      .eq(categoryId ? 'category_id' : 'id', categoryId || 'id')
       .range(startIndex, startIndex + count - 1)
       .order('created_at');
+
+    // 只有当提供了categoryId时才添加分类过滤
+    if (categoryId) {
+      query = query.eq('category_id', categoryId);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     return data;
