@@ -3,23 +3,19 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Volume2, CircleCheck as CheckCircle, Circle as XCircle, Eye, Heart } from 'lucide-react-native';
+import { questionBank, getRandomQuestions, getSequentialQuestions } from '@/data/questions';
 import { storage } from '@/utils/storage';
 import { Question } from '@/types/question';
-import { questions, practice } from '@/lib/supabase';
-import { useAuth } from '@/components/AuthProvider';
 
 export default function QuestionScreen() {
   const router = useRouter();
   const { mode } = useLocalSearchParams();
-  const { user } = useAuth();
-  const [practiceQuestions, setPracticeQuestions] = useState<Question[]>([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState<string | number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   const [isFavorite, setIsFavorite] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     loadQuestions();
@@ -27,87 +23,19 @@ export default function QuestionScreen() {
 
   useEffect(() => {
     checkIfFavorite();
-  }, [currentIndex, practiceQuestions]);
-
-  useEffect(() => {
-    // Create practice session for logged-in users
-    if (user && practiceQuestions.length > 0 && !currentSessionId) {
-      createPracticeSession();
-    }
-  }, [user, practiceQuestions, currentSessionId]);
-
-  const createPracticeSession = async () => {
-    if (!user) return;
-    
-    try {
-      const sessionType = mode === 'random' ? 'random' : 'sequential';
-      const session = await practice.createSession(user.id, sessionType);
-      if (session) {
-        setCurrentSessionId(session.id);
-      }
-    } catch (error) {
-      console.error('Failed to create practice session:', error);
-    }
-  };
+  }, [currentIndex, questions]);
 
   const loadQuestions = async () => {
-    console.log('Loading questions for mode:', mode);
-    try {
-      if (mode === 'wrong') {
-        const wrongQuestions = await storage.getWrongQuestions();
-        console.log('Loaded wrong questions:', wrongQuestions.length);
-        setPracticeQuestions(wrongQuestions);
-      } else if (mode === 'favorites') {
-        const favoriteQuestions = await storage.getFavoriteQuestions();
-        console.log('Loaded favorite questions:', favoriteQuestions.length);
-        setPracticeQuestions(favoriteQuestions);
-      } else if (mode === 'random') {
-        const data = await questions.getRandomQuestions(20);
-        console.log('Loaded random questions from DB:', data?.length || 0);
-        const formattedQuestions = formatQuestionsFromDB(data);
-        console.log('Formatted random questions:', formattedQuestions.length);
-        setPracticeQuestions(formattedQuestions);
-      } else {
-        const data = await questions.getSequentialQuestions(0, 20);
-        console.log('Loaded sequential questions from DB:', data?.length || 0);
-        const formattedQuestions = formatQuestionsFromDB(data);
-        console.log('Formatted sequential questions:', formattedQuestions.length);
-        setPracticeQuestions(formattedQuestions);
-      }
-    } catch (error) {
-      console.error('Failed to load questions:', error);
-      // Set empty array to prevent infinite loading
-      setPracticeQuestions([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatQuestionsFromDB = (data: any[]): Question[] => {
-    if (!data || data.length === 0) {
-      return [];
-    }
-    
-    return data.map(q => ({
-      id: q.id,
-      type: q.type as 'judgment' | 'multiple_choice',
-      category: getCategoryFromName(q.question_categories?.name) as 'memory' | 'judgment' | 'reaction',
-      question: q.question_text,
-      options: q.options,
-      correctAnswer: q.type === 'judgment' 
-        ? (q.correct_answer === 'true' || q.correct_answer === true) 
-        : parseInt(q.correct_answer),
-      explanation: q.explanation,
-      imageUrl: q.image_url
-    }));
-  };
-
-  const getCategoryFromName = (categoryName: string) => {
-    switch (categoryName) {
-      case '记忆力': return 'memory';
-      case '判断力': return 'judgment';
-      case '反应力': return 'reaction';
-      default: return 'judgment';
+    if (mode === 'wrong') {
+      const wrongQuestions = await storage.getWrongQuestions();
+      setQuestions(wrongQuestions);
+    } else if (mode === 'favorites') {
+      const favoriteQuestions = await storage.getFavoriteQuestions();
+      setQuestions(favoriteQuestions);
+    } else if (mode === 'random') {
+      setQuestions(getRandomQuestions(20));
+    } else {
+      setQuestions(getSequentialQuestions(0, 20));
     }
   };
 
@@ -130,41 +58,24 @@ export default function QuestionScreen() {
     }
   };
 
-  const currentQuestion = practiceQuestions[currentIndex];
+  const currentQuestion = questions[currentIndex];
 
   const handleAnswer = async (answer: string | number) => {
     setUserAnswer(answer);
     setShowExplanation(true);
     setAnsweredQuestions(prev => new Set([...prev, currentIndex]));
 
+    // Update practice progress and handle wrong answers
     const isCorrect = answer === currentQuestion.correctAnswer;
-    
-    // Save to local storage (for guest users and backup)
     await storage.updatePracticeProgress(currentQuestion.id, isCorrect);
     
     if (!isCorrect) {
       await storage.addWrongQuestions([currentQuestion]);
     }
-
-    // Save to database if user is logged in
-    if (user) {
-      try {
-        await practice.recordAnswer(
-          user.id,
-          currentQuestion.id,
-          answer.toString(),
-          isCorrect,
-          currentSessionId
-        );
-        console.log('Answer recorded to database:', { questionId: currentQuestion.id, answer, isCorrect });
-      } catch (error) {
-        console.error('Failed to record answer to database:', error);
-      }
-    }
   };
 
   const nextQuestion = () => {
-    if (currentIndex < practiceQuestions.length - 1) {
+    if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setUserAnswer(null);
       setShowExplanation(false);
@@ -184,50 +95,11 @@ export default function QuestionScreen() {
 
   const isCorrect = userAnswer === currentQuestion?.correctAnswer;
 
-  if (loading) {
+  if (!currentQuestion) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>加载题目中...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (!currentQuestion) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.8}
-          >
-            <ArrowLeft size={24} color="#1E40AF" strokeWidth={2} />
-          </TouchableOpacity>
-          
-          <Text style={styles.headerTitle}>
-            {mode === 'wrong' ? '错题练习' : mode === 'random' ? '随机练习' : '顺序练习'}
-          </Text>
-
-          <View style={styles.headerSpacer} />
-        </View>
-        
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyTitle}>没有可用题目</Text>
-          <Text style={styles.emptyDescription}>
-            {mode === 'wrong' && '错题本为空，请先进行练习添加错题。'}
-            {mode === 'favorites' && '收藏夹为空，请先收藏一些题目。'}
-            {mode === 'sequential' && '题库数据加载失败，请重试。'}
-            {mode === 'random' && '题库数据加载失败，请重试。'}
-          </Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={() => router.back()}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.retryButtonText}>返回练习</Text>
-          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -268,12 +140,12 @@ export default function QuestionScreen() {
             <View 
               style={[
                 styles.progressFill, 
-                { width: `${((currentIndex + 1) / practiceQuestions.length) * 100}%` }
+                { width: `${((currentIndex + 1) / questions.length) * 100}%` }
               ]} 
             />
           </View>
           <Text style={styles.progressText}>
-            {currentIndex + 1} / {practiceQuestions.length}
+            {currentIndex + 1} / {questions.length}
           </Text>
           
           <TouchableOpacity
@@ -420,8 +292,8 @@ export default function QuestionScreen() {
                   onPress={async () => {
                     await storage.removeWrongQuestion(currentQuestion.id);
                     // Remove from current questions list and go to next
-                    const newQuestions = practiceQuestions.filter(q => q.id !== currentQuestion.id);
-                    setPracticeQuestions(newQuestions);
+                    const newQuestions = questions.filter(q => q.id !== currentQuestion.id);
+                    setQuestions(newQuestions);
                     if (currentIndex >= newQuestions.length) {
                       router.back();
                     } else {
@@ -459,7 +331,7 @@ export default function QuestionScreen() {
           style={[
             styles.navButton,
             !showExplanation && styles.navButtonDisabled,
-            currentIndex === practiceQuestions.length - 1 && styles.finishButton
+            currentIndex === questions.length - 1 && styles.finishButton
           ]}
           onPress={nextQuestion}
           disabled={!showExplanation}
@@ -468,9 +340,9 @@ export default function QuestionScreen() {
           <Text style={[
             styles.navButtonText,
             !showExplanation && styles.navButtonTextDisabled,
-            currentIndex === practiceQuestions.length - 1 && styles.finishButtonText
+            currentIndex === questions.length - 1 && styles.finishButtonText
           ]}>
-            {currentIndex === practiceQuestions.length - 1 ? '完成练习' : '下一题'}
+            {currentIndex === questions.length - 1 ? '完成练习' : '下一题'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -513,39 +385,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  headerSpacer: {
-    width: 48,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 12,
-  },
-  emptyDescription: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 32,
-  },
-  retryButton: {
-    backgroundColor: '#1E40AF',
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-  },
-  retryButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
   scrollView: {
     flex: 1,

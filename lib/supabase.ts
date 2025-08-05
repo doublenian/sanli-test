@@ -108,50 +108,25 @@ export const questions = {
 
   // 获取随机题目
   async getRandomQuestions(count: number = 20, categoryId?: string) {
-    let query = supabase
-      .from('questions')
-      .select(`
-        *,
-        question_categories (
-          name,
-          description,
-          icon
-        )
-      `)
-      .eq('is_active', true)
-      .limit(count);
+    const { data, error } = await supabase
+      .rpc('get_random_questions', {
+        p_count: count,
+        p_category_id: categoryId || null,
+      });
 
-    if (categoryId) {
-      query = query.eq('category_id', categoryId);
-    }
-
-    const { data, error } = await query;
     if (error) throw error;
     return data;
   },
 
   // 获取顺序题目
   async getSequentialQuestions(startIndex: number = 0, count: number = 20, categoryId?: string) {
-    let query = supabase
+    const { data, error } = await supabase
       .from('questions')
-      .select(`
-        *,
-        question_categories (
-          name,
-          description,
-          icon
-        )
-      `)
+      .select('*')
       .eq('is_active', true)
+      .eq(categoryId ? 'category_id' : 'id', categoryId || 'id')
       .range(startIndex, startIndex + count - 1)
       .order('created_at');
-
-    // 只有当提供了categoryId时才添加分类过滤
-    if (categoryId) {
-      query = query.eq('category_id', categoryId);
-    }
-
-    const { data, error } = await query;
 
     if (error) throw error;
     return data;
