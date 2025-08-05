@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Users, BookOpen, LogIn } from 'lucide-react-native';
@@ -28,7 +28,11 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* App Branding */}
         <View style={styles.brandingSection}>
           <View style={styles.logoContainer}>
@@ -89,7 +93,7 @@ export default function WelcomeScreen() {
             专为70岁以上驾驶员设计 • 界面简洁 • 操作简单
           </Text>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -98,6 +102,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC'
+  },
+  scrollView: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -109,9 +116,10 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 24,
     justifyContent: 'space-between',
+    minHeight: '100%',
   },
   brandingSection: {
     alignItems: 'center',
