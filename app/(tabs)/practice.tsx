@@ -58,34 +58,30 @@ export default function PracticeScreen() {
 
         {/* Progress Statistics */}
         <FadeInView delay={200} style={styles.statsCard}>
-          {(progressLoading || wrongQuestionsLoading) ? (
-            <SkeletonCard />
-          ) : (
-            <>
-              <Text style={styles.statsTitle}>练习统计</Text>
-              <View style={styles.statsGrid}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{completionRate}%</Text>
-                  <Text style={styles.statLabel}>完成进度</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{accuracyRate}%</Text>
-                  <Text style={styles.statLabel}>正确率</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{practiceStats.wrongAnswers}</Text>
-                  <Text style={styles.statLabel}>错题数</Text>
-                </View>
+          <>
+            <Text style={styles.statsTitle}>练习统计</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{completionRate}%</Text>
+                <Text style={styles.statLabel}>完成进度</Text>
               </View>
-              
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${completionRate}%` }]} />
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{accuracyRate}%</Text>
+                <Text style={styles.statLabel}>正确率</Text>
               </View>
-              <Text style={styles.progressText}>
-                已完成 {practiceStats.completedQuestions}/{practiceStats.totalQuestions} 题
-              </Text>
-            </>
-          )}
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{practiceStats.wrongAnswers}</Text>
+                <Text style={styles.statLabel}>错题数</Text>
+              </View>
+            </View>
+            
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${completionRate}%` }]} />
+            </View>
+            <Text style={styles.progressText}>
+              已完成 {practiceStats.completedQuestions}/{practiceStats.totalQuestions} 题
+            </Text>
+          </>
         </FadeInView>
 
         {/* Practice Modes */}
