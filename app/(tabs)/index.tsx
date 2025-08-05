@@ -148,26 +148,24 @@ export default function HomeScreen() {
 
         {/* Progress Overview */}
         <FadeInView delay={200} style={styles.progressCard}>
-          <>
-            <View style={styles.progressHeader}>
-              <TrendingUp size={24} color="#1E40AF" strokeWidth={2} />
-              <Text style={styles.progressTitle}>学习进度</Text>
+          <View style={styles.progressHeader}>
+            <TrendingUp size={24} color="#1E40AF" strokeWidth={2} />
+            <Text style={styles.progressTitle}>学习进度</Text>
+          </View>
+          <View style={styles.progressContent}>
+            <View style={styles.progressItem}>
+              <Text style={styles.progressLabel}>题库完成度</Text>
+              <Text style={styles.progressValue}>{userStats.completionRate}%</Text>
             </View>
-            <View style={styles.progressContent}>
-              <View style={styles.progressItem}>
-                <Text style={styles.progressLabel}>题库完成度</Text>
-                <Text style={styles.progressValue}>{userStats.completionRate}%</Text>
-              </View>
-              <View style={styles.progressItem}>
-                <Text style={styles.progressLabel}>最高分</Text>
-                <Text style={styles.progressValue}>{userStats.highestScore}分</Text>
-              </View>
-              <View style={styles.progressItem}>
-                <Text style={styles.progressLabel}>平均分</Text>
-                <Text style={styles.progressValue}>{userStats.averageScore}分</Text>
-              </View>
+            <View style={styles.progressItem}>
+              <Text style={styles.progressLabel}>最高分</Text>
+              <Text style={styles.progressValue}>{userStats.highestScore}分</Text>
             </View>
-          </>
+            <View style={styles.progressItem}>
+              <Text style={styles.progressLabel}>平均分</Text>
+              <Text style={styles.progressValue}>{userStats.averageScore}分</Text>
+            </View>
+          </View>
         </FadeInView>
 
         {/* Main Actions */}
@@ -191,20 +189,18 @@ export default function HomeScreen() {
 
         {/* Quick Stats */}
         <FadeInView delay={600} style={styles.statsContainer}>
-          <>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>220+</Text>
-              <Text style={styles.statLabel}>题库总数</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{userStats.totalExams}</Text>
-              <Text style={styles.statLabel}>已完成考试</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{userStats.wrongQuestionsCount}</Text>
-              <Text style={styles.statLabel}>错题待复习</Text>
-            </View>
-          </>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>220+</Text>
+            <Text style={styles.statLabel}>题库总数</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{userStats.totalExams}</Text>
+            <Text style={styles.statLabel}>已完成考试</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{userStats.wrongQuestionsCount}</Text>
+            <Text style={styles.statLabel}>错题待复习</Text>
+          </View>
         </FadeInView>
       </ScrollView>
     </SafeAreaView>

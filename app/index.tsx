@@ -38,7 +38,7 @@ export default function WelcomeScreen() {
           <View style={styles.logoContainer}>
             <BookOpen size={80} color="#1E40AF" strokeWidth={2} />
           </View>
-          <Text style={styles.appName}>三力测试通1.0</Text>
+          <Text style={styles.appName}>三力测试通3.0</Text>
           <Text style={styles.tagline}>帮助您轻松通过驾驶员三力测试</Text>
         </View>
 

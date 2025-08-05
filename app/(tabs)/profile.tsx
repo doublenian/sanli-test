@@ -18,7 +18,9 @@ export default function ProfileScreen() {
     React.useCallback(() => {
       if (!loading && !user) {
         // 用户未登录，跳转到登录页面
-        router.replace('/auth/login');
+        setTimeout(() => {
+          router.replace('/auth/login');
+        }, 0);
       }
     }, [user, loading, router])
   );
