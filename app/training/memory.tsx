@@ -7,7 +7,7 @@ import { useTraining } from '@/hooks/useSupabaseData';
 
 export default function MemoryTrainingScreen() {
   const router = useRouter();
-  const { trainingQuestions, loading: questionsLoading } = useTraining();
+  const { trainingData, loading: questionsLoading } = useTraining();
   const [gameState, setGameState] = useState<'intro' | 'memorize' | 'distraction' | 'test' | 'result'>('intro');
   const [itemsToRemember, setItemsToRemember] = useState<typeof memoryItems>([]);
   const [timeLeft, setTimeLeft] = useState(10);
@@ -17,12 +17,11 @@ export default function MemoryTrainingScreen() {
   const [config, setConfig] = useState<any>({});
 
   useEffect(() => {
-    if (trainingQuestions?.memory) {
-      setMemoryItems(trainingQuestions.memory.items || []);
-      setConfig(trainingQuestions.memory.config || {});
-      setTimeLeft(trainingQuestions.memory.config?.memorizeTime || 10);
+    if (trainingData?.memory) {
+      setMemoryItems(trainingData.memory.items || []);
+      setConfig(trainingData.memory.config || {});
+      setTimeLeft(trainingData.memory.config?.memorizeTime || 10);
     }
-  }, [trainingQuestions]);
 
   useEffect(() => {
     if ((gameState === 'memorize' || gameState === 'distraction') && timeLeft > 0) {

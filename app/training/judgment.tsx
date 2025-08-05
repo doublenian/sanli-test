@@ -8,7 +8,7 @@ import { useTraining } from '@/hooks/useSupabaseData';
 
 export default function JudgmentTrainingScreen() {
   const router = useRouter();
-  const { trainingQuestions, loading: questionsLoading } = useTraining();
+  const { trainingData, loading: questionsLoading } = useTraining();
   const [gameState, setGameState] = useState<'intro' | 'playing' | 'result'>('intro');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<number[]>([]);
@@ -20,12 +20,11 @@ export default function JudgmentTrainingScreen() {
   const currentScenario = trafficScenarios[currentIndex];
 
   useEffect(() => {
-    if (trainingQuestions?.judgment) {
-      setTrafficScenarios(trainingQuestions.judgment.scenarios || []);
-      setConfig(trainingQuestions.judgment.config || {});
-      setTimeLeft(trainingQuestions.judgment.config?.thinkingTime || 60);
+    if (trainingData?.judgment) {
+      setTrafficScenarios(trainingData.judgment.scenarios || []);
+      setConfig(trainingData.judgment.config || {});
+      setTimeLeft(trainingData.judgment.config?.thinkingTime || 60);
     }
-  }, [trainingQuestions]);
 
   useEffect(() => {
     if (gameState === 'playing' && timeLeft > 0) {
