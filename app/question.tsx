@@ -3,19 +3,20 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Volume2, CircleCheck as CheckCircle, Circle as XCircle, Eye, Heart } from 'lucide-react-native';
-import { questionBank, getRandomQuestions, getSequentialQuestions } from '@/data/questions';
 import { storage } from '@/utils/storage';
 import { Question } from '@/types/question';
+import { questions } from '@/lib/supabase';
 
 export default function QuestionScreen() {
   const router = useRouter();
   const { mode } = useLocalSearchParams();
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [practiceQuestions, setPracticeQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState<string | number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   const [isFavorite, setIsFavorite] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadQuestions();
@@ -23,20 +24,49 @@ export default function QuestionScreen() {
 
   useEffect(() => {
     checkIfFavorite();
-  }, [currentIndex, questions]);
+  }, [currentIndex, practiceQuestions]);
 
   const loadQuestions = async () => {
-    if (mode === 'wrong') {
-      const wrongQuestions = await storage.getWrongQuestions();
-      setQuestions(wrongQuestions);
-    } else if (mode === 'favorites') {
-      const favoriteQuestions = await storage.getFavoriteQuestions();
-      setQuestions(favoriteQuestions);
-    } else if (mode === 'random') {
-      setQuestions(getRandomQuestions(20));
-    } else {
-      setQuestions(getSequentialQuestions(0, 20));
+    try {
+      if (mode === 'wrong') {
+        const wrongQuestions = await storage.getWrongQuestions();
+        setPracticeQuestions(wrongQuestions);
+      } else if (mode === 'favorites') {
+        const favoriteQuestions = await storage.getFavoriteQuestions();
+        setPracticeQuestions(favoriteQuestions);
+      } else if (mode === 'random') {
+        const data = await questions.getRandomQuestions(20);
+        const formattedQuestions = formatQuestionsFromDB(data);
+        setPracticeQuestions(formattedQuestions);
+      } else {
+        const data = await questions.getSequentialQuestions(0, 20);
+        const formattedQuestions = formatQuestionsFromDB(data);
+        setPracticeQuestions(formattedQuestions);
+      }
+    } catch (error) {
+      console.error('Failed to load questions:', error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const formatQuestionsFromDB = (data: any[]): Question[] => {
+    return data.map(q => ({
+      id: q.id,
+      type: q.type as 'judgment' | 'multiple_choice',
+      category: getCategoryFromId(q.category_id) as 'memory' | 'judgment' | 'reaction',
+      question: q.question_text,
+      options: q.options,
+      correctAnswer: q.type === 'judgment' ? q.correct_answer === 'true' : parseInt(q.correct_answer),
+      explanation: q.explanation,
+      imageUrl: q.image_url
+    }));
+  };
+
+  const getCategoryFromId = (categoryId: string) => {
+    // Map category IDs to category names
+    // This is a simplified mapping - you might want to make this more robust
+    return 'judgment'; // Default category
   };
 
   const checkIfFavorite = async () => {
@@ -58,7 +88,7 @@ export default function QuestionScreen() {
     }
   };
 
-  const currentQuestion = questions[currentIndex];
+  const currentQuestion = practiceQuestions[currentIndex];
 
   const handleAnswer = async (answer: string | number) => {
     setUserAnswer(answer);
@@ -75,7 +105,7 @@ export default function QuestionScreen() {
   };
 
   const nextQuestion = () => {
-    if (currentIndex < questions.length - 1) {
+    if (currentIndex < practiceQuestions.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setUserAnswer(null);
       setShowExplanation(false);
@@ -95,11 +125,21 @@ export default function QuestionScreen() {
 
   const isCorrect = userAnswer === currentQuestion?.correctAnswer;
 
-  if (!currentQuestion) {
+  if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>加载题目中...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!currentQuestion) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>没有可用题目</Text>
         </View>
       </SafeAreaView>
     );
@@ -145,7 +185,7 @@ export default function QuestionScreen() {
             />
           </View>
           <Text style={styles.progressText}>
-            {currentIndex + 1} / {questions.length}
+            {currentIndex + 1} / {practiceQuestions.length}
           </Text>
           
           <TouchableOpacity
@@ -292,8 +332,8 @@ export default function QuestionScreen() {
                   onPress={async () => {
                     await storage.removeWrongQuestion(currentQuestion.id);
                     // Remove from current questions list and go to next
-                    const newQuestions = questions.filter(q => q.id !== currentQuestion.id);
-                    setQuestions(newQuestions);
+                    const newQuestions = practiceQuestions.filter(q => q.id !== currentQuestion.id);
+                    setPracticeQuestions(newQuestions);
                     if (currentIndex >= newQuestions.length) {
                       router.back();
                     } else {
@@ -331,7 +371,7 @@ export default function QuestionScreen() {
           style={[
             styles.navButton,
             !showExplanation && styles.navButtonDisabled,
-            currentIndex === questions.length - 1 && styles.finishButton
+            currentIndex === practiceQuestions.length - 1 && styles.finishButton
           ]}
           onPress={nextQuestion}
           disabled={!showExplanation}
@@ -340,9 +380,9 @@ export default function QuestionScreen() {
           <Text style={[
             styles.navButtonText,
             !showExplanation && styles.navButtonTextDisabled,
-            currentIndex === questions.length - 1 && styles.finishButtonText
+            currentIndex === practiceQuestions.length - 1 && styles.finishButtonText
           ]}>
-            {currentIndex === questions.length - 1 ? '完成练习' : '下一题'}
+            {currentIndex === practiceQuestions.length - 1 ? '完成练习' : '下一题'}
           </Text>
         </TouchableOpacity>
       </View>

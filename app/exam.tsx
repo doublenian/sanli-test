@@ -3,19 +3,52 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Clock, CircleCheck as CheckCircle, X } from 'lucide-react-native';
-import { getRandomQuestions } from '@/data/questions';
 import { storage } from '@/utils/storage';
 import { Question } from '@/types/question';
+import { questions } from '@/lib/supabase';
 
 export default function ExamScreen() {
   const router = useRouter();
-  const [questions] = useState<Question[]>(() => getRandomQuestions(20));
+  const [examQuestions, setExamQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<(string | number | null)[]>(new Array(20).fill(null));
+  const [answers, setAnswers] = useState<(string | number | null)[]>([]);
   const [timeLeft, setTimeLeft] = useState(20 * 60); // 20 minutes in seconds
   const [showResult, setShowResult] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const currentQuestion = questions[currentQuestionIndex];
+  useEffect(() => {
+    loadExamQuestions();
+  }, []);
+
+  const loadExamQuestions = async () => {
+    try {
+      const data = await questions.getRandomQuestions(20);
+      const formattedQuestions = data.map(q => ({
+        id: q.id,
+        type: q.type as 'judgment' | 'multiple_choice',
+        category: getCategoryFromId(q.category_id) as 'memory' | 'judgment' | 'reaction',
+        question: q.question_text,
+        options: q.options,
+        correctAnswer: q.type === 'judgment' ? q.correct_answer === 'true' : parseInt(q.correct_answer),
+        explanation: q.explanation,
+        imageUrl: q.image_url
+      }));
+      setExamQuestions(formattedQuestions);
+      setAnswers(new Array(formattedQuestions.length).fill(null));
+    } catch (error) {
+      console.error('Failed to load exam questions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getCategoryFromId = (categoryId: string) => {
+    // Map category IDs to category names
+    // This is a simplified mapping - you might want to make this more robust
+    return 'judgment'; // Default category
+  };
+
+  const currentQuestion = examQuestions[currentQuestionIndex];
 
   // Timer
   useEffect(() => {
@@ -40,7 +73,7 @@ export default function ExamScreen() {
   };
 
   const nextQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1) {
+    if (currentQuestionIndex < examQuestions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
@@ -55,7 +88,7 @@ export default function ExamScreen() {
     let correctCount = 0;
     const wrongQuestions: Question[] = [];
 
-    questions.forEach((question, index) => {
+    examQuestions.forEach((question, index) => {
       const userAnswer = answers[index];
       if (userAnswer === question.correctAnswer) {
         correctCount++;
@@ -68,7 +101,7 @@ export default function ExamScreen() {
       }
     });
 
-    const score = Math.round((correctCount / questions.length) * 100);
+    const score = Math.round((correctCount / examQuestions.length) * 100);
     const passed = score >= 90;
 
     // Store exam result
@@ -76,7 +109,7 @@ export default function ExamScreen() {
       id: Date.now().toString(),
       date: new Date().toISOString().split('T')[0],
       score,
-      totalQuestions: questions.length,
+      totalQuestions: examQuestions.length,
       correctAnswers: correctCount,
       timeSpent: (20 * 60) - timeLeft,
       passed,
@@ -104,10 +137,10 @@ export default function ExamScreen() {
   };
 
   if (showResult) {
-    const correctCount = questions.reduce((count, question, index) => {
+    const correctCount = examQuestions.reduce((count, question, index) => {
       return answers[index] === question.correctAnswer ? count + 1 : count;
     }, 0);
-    const score = Math.round((correctCount / questions.length) * 100);
+    const score = Math.round((correctCount / examQuestions.length) * 100);
     const passed = score >= 90;
 
     return (
@@ -131,7 +164,7 @@ export default function ExamScreen() {
             <View style={styles.resultDetails}>
               <View style={styles.resultDetailItem}>
                 <Text style={styles.resultDetailLabel}>正确题数</Text>
-                <Text style={styles.resultDetailValue}>{correctCount}/{questions.length}</Text>
+                <Text style={styles.resultDetailValue}>{correctCount}/{examQuestions.length}</Text>
               </View>
               <View style={styles.resultDetailItem}>
                 <Text style={styles.resultDetailLabel}>用时</Text>
@@ -150,7 +183,7 @@ export default function ExamScreen() {
                 style={[styles.resultButton, styles.retakeButton]}
                 onPress={() => {
                   setCurrentQuestionIndex(0);
-                  setAnswers(new Array(20).fill(null));
+                  setAnswers(new Array(examQuestions.length).fill(null));
                   setTimeLeft(20 * 60);
                   setShowResult(false);
                 }}
@@ -168,18 +201,28 @@ export default function ExamScreen() {
               </TouchableOpacity>
             </View>
 
-            {questions.filter((_, index) => answers[index] !== questions[index].correctAnswer).length > 0 && (
+            {examQuestions.filter((_, index) => answers[index] !== examQuestions[index].correctAnswer).length > 0 && (
               <TouchableOpacity
                 style={styles.errorsButton}
                 onPress={() => router.push('/errors')}
                 activeOpacity={0.8}
               >
                 <Text style={styles.errorsButtonText}>
-                  查看错题解析 ({questions.filter((_, index) => answers[index] !== questions[index].correctAnswer).length}题)
+                  查看错题解析 ({examQuestions.filter((_, index) => answers[index] !== examQuestions[index].correctAnswer).length}题)
                 </Text>
               </TouchableOpacity>
             )}
           </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>加载考试题目中...</Text>
         </View>
       </SafeAreaView>
     );
@@ -201,7 +244,7 @@ export default function ExamScreen() {
         
         <View style={styles.progressContainer}>
           <Text style={styles.progressText}>
-            {currentQuestionIndex + 1}/{questions.length}
+            {currentQuestionIndex + 1}/{examQuestions.length}
           </Text>
         </View>
       </View>
@@ -303,7 +346,7 @@ export default function ExamScreen() {
           </Text>
         </TouchableOpacity>
 
-        {currentQuestionIndex === questions.length - 1 ? (
+        {currentQuestionIndex === examQuestions.length - 1 ? (
           <TouchableOpacity
             style={[styles.navButton, styles.finishButton]}
             onPress={confirmFinish}
@@ -313,8 +356,9 @@ export default function ExamScreen() {
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={styles.navButton}
+            style={[styles.navButton, currentQuestionIndex === examQuestions.length - 1 && styles.navButtonDisabled]}
             onPress={nextQuestion}
+            disabled={currentQuestionIndex === examQuestions.length - 1}
             activeOpacity={0.8}
           >
             <Text style={styles.navButtonText}>下一题</Text>
@@ -593,5 +637,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#DC2626',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#64748B',
+    textAlign: 'center',
   },
 });
