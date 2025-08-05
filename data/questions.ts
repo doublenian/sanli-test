@@ -147,6 +147,31 @@ const parseCorrectAnswer = (correctAnswer: string, type: string): string | numbe
   }
 };
 
+// 根据 category_id 获取 category 名称
+const getCategoryFromCategoryId = (categoryId: string | null): Question['category'] => {
+  // 根据实际的分类ID映射来转换
+  switch (categoryId) {
+    case 'memory-cat-id':
+      return 'memory';
+    case 'judgment-cat-id':
+      return 'judgment';
+    case 'reaction-cat-id':
+      return 'reaction';
+    default:
+      return 'judgment'; // 默认分类
+  }
+};
+
+// 解析正确答案
+const parseCorrectAnswer = (correctAnswer: string, type: string): string | number | boolean => {
+  if (type === 'judgment') {
+    return correctAnswer === 'true';
+  } else {
+    // multiple_choice 类型，返回选项索引
+    return parseInt(correctAnswer, 10);
+  }
+};
+
 // 获取题目总数（用于统计）
 export const getQuestionsCount = async (): Promise<number> => {
   try {
