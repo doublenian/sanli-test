@@ -5,11 +5,13 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Volume2, CircleCheck as CheckCircle, Circle as XCircle, Eye, Heart } from 'lucide-react-native';
 import { storage } from '@/utils/storage';
 import { Question } from '@/types/question';
-import { questions } from '@/lib/supabase';
+import { questions, practice } from '@/lib/supabase';
+import { useAuth } from '@/components/AuthProvider';
 
 export default function QuestionScreen() {
   const router = useRouter();
   const { mode } = useLocalSearchParams();
+  const { user } = useAuth();
   const [practiceQuestions, setPracticeQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState<string | number | null>(null);
@@ -17,6 +19,7 @@ export default function QuestionScreen() {
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   const [isFavorite, setIsFavorite] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     loadQuestions();
@@ -25,6 +28,27 @@ export default function QuestionScreen() {
   useEffect(() => {
     checkIfFavorite();
   }, [currentIndex, practiceQuestions]);
+
+  useEffect(() => {
+    // Create practice session for logged-in users
+    if (user && practiceQuestions.length > 0 && !currentSessionId) {
+      createPracticeSession();
+    }
+  }, [user, practiceQuestions, currentSessionId]);
+
+  const createPracticeSession = async () => {
+    if (!user) return;
+    
+    try {
+      const sessionType = mode === 'random' ? 'random' : 'sequential';
+      const session = await practice.createSession(user.id, sessionType);
+      if (session) {
+        setCurrentSessionId(session.id);
+      }
+    } catch (error) {
+      console.error('Failed to create practice session:', error);
+    }
+  };
 
   const loadQuestions = async () => {
     console.log('Loading questions for mode:', mode);
@@ -113,12 +137,29 @@ export default function QuestionScreen() {
     setShowExplanation(true);
     setAnsweredQuestions(prev => new Set([...prev, currentIndex]));
 
-    // Update practice progress and handle wrong answers
     const isCorrect = answer === currentQuestion.correctAnswer;
+    
+    // Save to local storage (for guest users and backup)
     await storage.updatePracticeProgress(currentQuestion.id, isCorrect);
     
     if (!isCorrect) {
       await storage.addWrongQuestions([currentQuestion]);
+    }
+
+    // Save to database if user is logged in
+    if (user) {
+      try {
+        await practice.recordAnswer(
+          user.id,
+          currentQuestion.id,
+          answer.toString(),
+          isCorrect,
+          currentSessionId
+        );
+        console.log('Answer recorded to database:', { questionId: currentQuestion.id, answer, isCorrect });
+      } catch (error) {
+        console.error('Failed to record answer to database:', error);
+      }
     }
   };
 
