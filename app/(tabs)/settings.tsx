@@ -130,8 +130,8 @@ export default function SettingsScreen() {
             <Switch
               value={item.value}
               onValueChange={item.onChange}
-              trackColor={{ false: '#E2E8F0', true: '#93C5FD' }}
-              thumbColor={item.value ? '#1E40AF' : '#F1F5F9'}
+              trackColor={{ false: '#E2E8F0', true: '#16A34A' }}
+              thumbColor={item.value ? '#FFFFFF' : '#F1F5F9'}
               style={{ transform: [{ scaleX: 1.2 }, { scaleY: 1.2 }] }}
             />
           )}

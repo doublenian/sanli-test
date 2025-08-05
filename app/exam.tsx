@@ -7,6 +7,7 @@ import { getRandomQuestions } from '@/data/questions';
 import { storage } from '@/utils/storage';
 import { Question } from '@/types/question';
 import { Dialog } from '@/components/Dialog';
+import { useSpeech } from '@/hooks/useSpeech';
 
 export default function ExamScreen() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function ExamScreen() {
   const [timeLeft, setTimeLeft] = useState(20 * 60); // 20 minutes in seconds
   const [showResult, setShowResult] = useState(false);
   const [showFinishDialog, setShowFinishDialog] = useState(false);
+  const speech = useSpeech();
 
   const currentQuestion = questions[currentQuestionIndex];
 
@@ -41,6 +43,17 @@ export default function ExamScreen() {
     setAnswers(newAnswers);
   };
 
+  // 当题目变化时，自动播报新题目（考试模式下可选择性播报）
+  useEffect(() => {
+    if (currentQuestion && speech) {
+      // 考试模式下延迟播报，给用户阅读时间
+      const timer = setTimeout(() => {
+        speech.speakQuestion(currentQuestion.question, currentQuestion.type);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [currentQuestionIndex, currentQuestion, speech]);
   const nextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);

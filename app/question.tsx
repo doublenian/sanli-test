@@ -6,6 +6,7 @@ import { ArrowLeft, Volume2, CircleCheck as CheckCircle, Circle as XCircle, Eye,
 import { questionBank, getRandomQuestions, getSequentialQuestions } from '@/data/questions';
 import { storage } from '@/utils/storage';
 import { Question } from '@/types/question';
+import { useSpeech } from '@/hooks/useSpeech';
 
 export default function QuestionScreen() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function QuestionScreen() {
   const [showExplanation, setShowExplanation] = useState(false);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   const [isFavorite, setIsFavorite] = useState(false);
+  const speech = useSpeech();
 
   useEffect(() => {
     loadQuestions();
@@ -58,12 +60,31 @@ export default function QuestionScreen() {
     }
   };
 
+  // 当题目变化时，自动播报新题目
+  useEffect(() => {
+    if (currentQuestion && speech) {
+      // 延迟一下让页面渲染完成
+      const timer = setTimeout(() => {
+        speech.speakQuestion(currentQuestion.question, currentQuestion.type);
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [currentIndex, currentQuestion, speech]);
+
   const currentQuestion = questions[currentIndex];
 
   const handleAnswer = async (answer: string | number) => {
     setUserAnswer(answer);
     setShowExplanation(true);
     setAnsweredQuestions(prev => new Set([...prev, currentIndex]));
+
+    // 播报用户选择的答案
+    if (currentQuestion.type === 'judgment') {
+      speech.speakJudgmentOption(answer as boolean);
+    } else if (currentQuestion.options && typeof answer === 'number') {
+      speech.speakOption(currentQuestion.options[answer], answer);
+    }
 
     // Update practice progress and handle wrong answers
     const isCorrect = answer === currentQuestion.correctAnswer;
@@ -124,8 +145,7 @@ export default function QuestionScreen() {
         <TouchableOpacity
           style={styles.voiceButton}
           onPress={() => {
-            // Voice synthesis would be implemented here
-            console.log('Playing voice for:', currentQuestion.question);
+            speech.speakQuestion(currentQuestion.question, currentQuestion.type);
           }}
           activeOpacity={0.8}
         >
@@ -198,6 +218,7 @@ export default function QuestionScreen() {
                   ]}
                   onPress={() => handleAnswer(true)}
                   disabled={showExplanation}
+                  onLongPress={() => speech.speakJudgmentOption(true)}
                   activeOpacity={0.8}
                 >
                   <Text style={[
@@ -217,6 +238,7 @@ export default function QuestionScreen() {
                   ]}
                   onPress={() => handleAnswer(false)}
                   disabled={showExplanation}
+                  onLongPress={() => speech.speakJudgmentOption(false)}
                   activeOpacity={0.8}
                 >
                   <Text style={[
@@ -241,6 +263,7 @@ export default function QuestionScreen() {
                     ]}
                     onPress={() => handleAnswer(index)}
                     disabled={showExplanation}
+                    onLongPress={() => speech.speakOption(option, index)}
                     activeOpacity={0.8}
                   >
                     <Text style={[
@@ -280,6 +303,13 @@ export default function QuestionScreen() {
                 <View style={styles.explanationHeader}>
                   <Eye size={20} color="#1E40AF" strokeWidth={2} />
                   <Text style={styles.explanationTitle}>详细解析</Text>
+                  <TouchableOpacity
+                    style={styles.explanationVoiceButton}
+                    onPress={() => speech.speakExplanation(currentQuestion.explanation, isCorrect)}
+                    activeOpacity={0.8}
+                  >
+                    <Volume2 size={16} color="#1E40AF" strokeWidth={2} />
+                  </TouchableOpacity>
                 </View>
                 <Text style={styles.explanationText}>
                   {currentQuestion.explanation}
@@ -566,6 +596,7 @@ const styles = StyleSheet.create({
   explanationHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
   },
   explanationTitle: {
@@ -573,6 +604,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1E293B',
     marginLeft: 8,
+    flex: 1,
+  },
+  explanationVoiceButton: {
+    padding: 4,
+    borderRadius: 4,
+    backgroundColor: '#EFF6FF',
   },
   explanationText: {
     fontSize: 16,

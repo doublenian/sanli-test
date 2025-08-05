@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { CircleCheck as CheckCircle, Circle as XCircle, Info } from 'lucide-react-native';
+import { useSpeech } from '@/hooks/useSpeech';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -14,9 +15,17 @@ interface ToastProps {
 
 export function Toast({ visible, message, type, onHide, duration = 3000 }: ToastProps) {
   const [opacity] = useState(new Animated.Value(0));
+  const speech = useSpeech();
 
   useEffect(() => {
     if (visible) {
+      // 播报Toast消息（重要通知）
+      if (type === 'error') {
+        speech.speak(`错误：${message}`);
+      } else if (type === 'success') {
+        speech.speak(`成功：${message}`);
+      }
+      
       Animated.sequence([
         Animated.timing(opacity, {
           toValue: 1,
