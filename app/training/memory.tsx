@@ -7,7 +7,7 @@ import { useTraining } from '@/hooks/useSupabaseData';
 
 export default function MemoryTrainingScreen() {
   const router = useRouter();
-  const { trainingData, loading: questionsLoading } = useTraining();
+  const { trainingQuestions, loading: questionsLoading } = useTraining();
   const [gameState, setGameState] = useState<'intro' | 'memorize' | 'distraction' | 'test' | 'result'>('intro');
   const [itemsToRemember, setItemsToRemember] = useState<typeof memoryItems>([]);
   const [timeLeft, setTimeLeft] = useState(10);
@@ -17,12 +17,12 @@ export default function MemoryTrainingScreen() {
   const [config, setConfig] = useState<any>({});
 
   useEffect(() => {
-    if (trainingData?.memory) {
-      setMemoryItems(trainingData.memory.items || []);
-      setConfig(trainingData.memory.config || {});
-      setTimeLeft(trainingData.memory.config?.memorizeTime || 10);
+    if (trainingQuestions?.memory) {
+      setMemoryItems(trainingQuestions.memory.items || []);
+      setConfig(trainingQuestions.memory.config || {});
+      setTimeLeft(trainingQuestions.memory.config?.memorizeTime || 10);
     }
-  }, [trainingData]);
+  }, [trainingQuestions]);
 
   useEffect(() => {
     if ((gameState === 'memorize' || gameState === 'distraction') && timeLeft > 0) {
@@ -283,13 +283,11 @@ export default function MemoryTrainingScreen() {
           <Text style={styles.loadingText}>加载训练题目中...</Text>
         </View>
       ) : (
-        <>
-          {gameState === 'intro' && renderIntro()}
-          {gameState === 'memorize' && renderMemorize()}
-          {gameState === 'distraction' && renderDistraction()}
-          {gameState === 'test' && renderTest()}
-          {gameState === 'result' && renderResult()}
-        </>
+      {gameState === 'intro' && renderIntro()}
+      {gameState === 'memorize' && renderMemorize()}
+      {gameState === 'distraction' && renderDistraction()}
+      {gameState === 'test' && renderTest()}
+      {gameState === 'result' && renderResult()}
       )}
     </SafeAreaView>
   );

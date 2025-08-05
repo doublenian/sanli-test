@@ -8,7 +8,7 @@ import { useTraining } from '@/hooks/useSupabaseData';
 
 export default function ReactionTrainingScreen() {
   const router = useRouter();
-  const { trainingData, loading: questionsLoading } = useTraining();
+  const { trainingQuestions, loading: questionsLoading } = useTraining();
   const [gameState, setGameState] = useState<'intro' | 'ready' | 'waiting' | 'signal' | 'result'>('intro');
   const [currentTestIndex, setCurrentTestIndex] = useState(0);
   const [reactionTimes, setReactionTimes] = useState<number[]>([]);
@@ -23,12 +23,12 @@ export default function ReactionTrainingScreen() {
   const currentTest = reactionTests[currentTestIndex];
 
   useEffect(() => {
-    if (trainingData?.reaction) {
-      setReactionTests(trainingData.reaction.tests || []);
-      setConfig(trainingData.reaction.config || {});
-      setCountDown(trainingData.reaction.config?.countdownTime || 3);
+    if (trainingQuestions?.reaction) {
+      setReactionTests(trainingQuestions.reaction.tests || []);
+      setConfig(trainingQuestions.reaction.config || {});
+      setCountDown(trainingQuestions.reaction.config?.countdownTime || 3);
     }
-  }, [trainingData]);
+  }, [trainingQuestions]);
 
   useEffect(() => {
     if (gameState === 'ready' && countDown > 0) {

@@ -229,7 +229,7 @@ export function useWrongQuestions() {
 export function useTraining() {
   const { user } = useAuth();
   const [trainingHistory, setTrainingHistory] = useState<any[]>([]);
-  const [trainingData, setTrainingData] = useState<any>(null);
+  const [trainingQuestions, setTrainingQuestions] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -259,7 +259,7 @@ export function useTraining() {
         acc[item.training_type] = item.question_data;
         return acc;
       }, {});
-      setTrainingData(questionsMap);
+      setTrainingQuestions(questionsMap);
     } catch (error) {
       console.error('Error loading training questions:', error);
     }
@@ -280,7 +280,7 @@ export function useTraining() {
 
   return {
     trainingHistory,
-    trainingData,
+    trainingQuestions,
     loading,
     saveTrainingRecord,
     loadTrainingQuestions,

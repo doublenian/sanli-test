@@ -8,7 +8,7 @@ import { useTraining } from '@/hooks/useSupabaseData';
 
 export default function JudgmentTrainingScreen() {
   const router = useRouter();
-  const { trainingData, loading: questionsLoading } = useTraining();
+  const { trainingQuestions, loading: questionsLoading } = useTraining();
   const [gameState, setGameState] = useState<'intro' | 'playing' | 'result'>('intro');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<number[]>([]);
@@ -20,11 +20,12 @@ export default function JudgmentTrainingScreen() {
   const currentScenario = trafficScenarios[currentIndex];
 
   useEffect(() => {
-    if (trainingData?.judgment) {
-      setTrafficScenarios(trainingData.judgment.scenarios || []);
-      setConfig(trainingData.judgment.config || {});
-      setTimeLeft(trainingData.judgment.config?.thinkingTime || 60);
+    if (trainingQuestions?.judgment) {
+      setTrafficScenarios(trainingQuestions.judgment.scenarios || []);
+      setConfig(trainingQuestions.judgment.config || {});
+      setTimeLeft(trainingQuestions.judgment.config?.thinkingTime || 60);
     }
+  }, [trainingQuestions]);
 
   useEffect(() => {
     if (gameState === 'playing' && timeLeft > 0) {
@@ -222,11 +223,9 @@ export default function JudgmentTrainingScreen() {
           <Text style={styles.loadingText}>加载训练题目中...</Text>
         </View>
       ) : (
-        <>
-          {gameState === 'intro' && renderIntro()}
-          {gameState === 'playing' && renderGame()}
-          {gameState === 'result' && renderResult()}
-        </>
+      {gameState === 'intro' && renderIntro()}
+      {gameState === 'playing' && renderGame()}
+      {gameState === 'result' && renderResult()}
       )}
     </SafeAreaView>
   );
