@@ -23,7 +23,15 @@ export default function LoginScreen() {
       await auth.signIn(email, password);
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('登录失败', error.message || '请检查邮箱和密码是否正确');
+      let errorMessage = '请检查邮箱和密码是否正确';
+      
+      if (error.message && error.message.includes('Invalid login credentials')) {
+        errorMessage = '邮箱或密码错误，请检查后重试。如果您还没有账号，请点击下方"立即注册"按钮创建账号。';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('登录失败', errorMessage);
     } finally {
       setLoading(false);
     }
