@@ -3,11 +3,43 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Play, BookOpen, Target, TrendingUp } from 'lucide-react-native';
+import { useAuth } from '@/components/AuthProvider';
+import { useExams, useWrongQuestions, usePractice } from '@/hooks/useSupabaseData';
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { examStats, loading: examLoading } = useExams();
+  const { wrongQuestions, loading: wrongQuestionsLoading } = useWrongQuestions();
+  const { progress, loading: progressLoading } = usePractice();
+
+  // Calculate real stats
+  const userStats = React.useMemo(() => {
+    if (examLoading || wrongQuestionsLoading || progressLoading) {
+      return {
+        completionRate: 0,
+        highestScore: 0,
+        averageScore: 0,
+        totalExams: 0,
+        wrongQuestionsCount: 0,
+      };
+    }
+
+    // Calculate completion rate from practice progress
+    const totalQuestions = 220; // From question bank
+    const completedQuestions = progress?.reduce((total, p) => total + (p.completed_questions || 0), 0) || 0;
+    const completionRate = Math.round((completedQuestions / totalQuestions) * 100);
+
+    return {
+      completionRate,
+      highestScore: examStats?.highest_score || 0,
+      averageScore: Math.round(examStats?.average_score || 0),
+      totalExams: examStats?.total_exams || 0,
+      wrongQuestionsCount: wrongQuestions?.length || 0,
+    };
+  }, [examStats, wrongQuestions, progress, examLoading, wrongQuestionsLoading, progressLoading]);
 
   const mainActions = [
     {
@@ -51,15 +83,15 @@ export default function HomeScreen() {
           <View style={styles.progressContent}>
             <View style={styles.progressItem}>
               <Text style={styles.progressLabel}>题库完成度</Text>
-              <Text style={styles.progressValue}>65%</Text>
+              <Text style={styles.progressValue}>{userStats.completionRate}%</Text>
             </View>
             <View style={styles.progressItem}>
               <Text style={styles.progressLabel}>最高分</Text>
-              <Text style={styles.progressValue}>95分</Text>
+              <Text style={styles.progressValue}>{userStats.highestScore}分</Text>
             </View>
             <View style={styles.progressItem}>
               <Text style={styles.progressLabel}>平均分</Text>
-              <Text style={styles.progressValue}>87分</Text>
+              <Text style={styles.progressValue}>{userStats.averageScore}分</Text>
             </View>
           </View>
         </View>
@@ -91,11 +123,11 @@ export default function HomeScreen() {
             <Text style={styles.statLabel}>题库总数</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>15</Text>
+            <Text style={styles.statNumber}>{userStats.totalExams}</Text>
             <Text style={styles.statLabel}>已完成考试</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>8</Text>
+            <Text style={styles.statNumber}>{userStats.wrongQuestionsCount}</Text>
             <Text style={styles.statLabel}>错题待复习</Text>
           </View>
         </View>
