@@ -1,8 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Supabase URL and Anon Key must be provided');
+}
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -200,24 +204,14 @@ export const exams = {
 
   // 获取用户考试历史
   async getUserExamHistory(userId: string, limit: number = 10) {
-    const apiUrl = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/get-user-recent-exams`;
-    const headers = {
-      'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
-      'Content-Type': 'application/json',
-    };
-    
-    const url = new URL(apiUrl);
-    url.searchParams.set('p_user_id', userId);
-    url.searchParams.set('p_limit', limit.toString());
-    
-    const response = await fetch(url.toString(), { headers });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
+    const { data, error } = await supabase
+      .from('exam_records')
+      .select('*')
+      .eq('user_id', userId)
+      .order('completed_at', { ascending: false })
+      .limit(limit);
 
+    if (error) throw error;
     return data;
   },
 
@@ -301,24 +295,26 @@ export const practice = {
 export const wrongQuestions = {
   // 获取用户错题
   async getUserWrongQuestions(userId: string, includeMastered: boolean = false) {
-    const apiUrl = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/get-user-wrong-questions`;
-    const headers = {
-      'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
-      'Content-Type': 'application/json',
-    };
-    
-    const url = new URL(apiUrl);
-    url.searchParams.set('p_user_id', userId);
-    url.searchParams.set('p_include_mastered', includeMastered.toString());
-    
-    const response = await fetch(url.toString(), { headers });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
+    let query = supabase
+      .from('user_wrong_questions')
+      .select(`
+        *,
+        questions (
+          *,
+          question_categories (
+            name,
+            icon
+          )
+        )
+      `)
+      .eq('user_id', userId);
 
+    if (!includeMastered) {
+      query = query.eq('is_mastered', false);
+    }
+
+    const { data, error } = await query.order('last_wrong_at', { ascending: false });
+    if (error) throw error;
     return data;
   },
 
