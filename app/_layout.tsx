@@ -12,8 +12,22 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="auth/login" />
-        <Stack.Screen name="auth/register" />
+        <Stack.Screen 
+          name="auth/login" 
+          options={{ 
+            presentation: 'modal',
+            animationTypeForReplace: 'pop',
+            gestureEnabled: true
+          }} 
+        />
+        <Stack.Screen 
+          name="auth/register" 
+          options={{ 
+            presentation: 'modal',
+            animationTypeForReplace: 'pop',
+            gestureEnabled: true
+          }} 
+        />
         <Stack.Screen name="exam" />
         <Stack.Screen name="question" />
         <Stack.Screen name="errors" />
