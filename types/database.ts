@@ -473,7 +473,7 @@ export interface Database {
           total_passed: number;
           highest_score: number;
           average_score: number;
-          total_study_time: number;
+          total_study_time: string;
           pass_rate: number;
         };
       };
