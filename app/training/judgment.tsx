@@ -223,9 +223,11 @@ export default function JudgmentTrainingScreen() {
           <Text style={styles.loadingText}>加载训练题目中...</Text>
         </View>
       ) : (
-      {gameState === 'intro' && renderIntro()}
-      {gameState === 'playing' && renderGame()}
-      {gameState === 'result' && renderResult()}
+        <>
+          {gameState === 'intro' && renderIntro()}
+          {gameState === 'playing' && renderGame()}
+          {gameState === 'result' && renderResult()}
+        </>
       )}
     </SafeAreaView>
   );
