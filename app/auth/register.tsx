@@ -45,16 +45,18 @@ export default function RegisterScreen() {
       });
 
       Alert.alert(
-        if (error.message.includes('over_email_send_rate_limit')) {
-          setError('发送邮件过于频繁，请等待50秒后再试');
-        } else {
-          setError(error.message);
-        }
+        '注册成功',
         '账号注册成功！请登录开始使用。',
         [{ text: '立即登录', onPress: () => router.replace('/auth/login') }]
       );
     } catch (error: any) {
-      Alert.alert('注册失败', error.message || '注册过程中出现错误，请重试');
+      let errorMessage = '注册过程中出现错误，请重试';
+      if (error.message && error.message.includes('over_email_send_rate_limit')) {
+        errorMessage = '发送邮件过于频繁，请等待50秒后再试';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      Alert.alert('注册失败', errorMessage);
     } finally {
       setLoading(false);
     }
