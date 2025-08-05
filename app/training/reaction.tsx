@@ -28,6 +28,7 @@ export default function ReactionTrainingScreen() {
       setConfig(trainingData.reaction.config || {});
       setCountDown(trainingData.reaction.config?.countdownTime || 3);
     }
+  }, [trainingData]);
 
   useEffect(() => {
     if (gameState === 'ready' && countDown > 0) {
