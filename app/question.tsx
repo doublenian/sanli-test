@@ -28,6 +28,10 @@ export default function QuestionScreen() {
   const [showExplanation, setShowExplanation] = useState(false);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   const [isFavorite, setIsFavorite] = useState(false);
+  
+  // Initialize currentQuestion immediately after state declarations
+  const currentQuestion = questions[currentIndex];
+  
   const speech = useSpeech();
   const haptics = useHaptics();
   
@@ -89,8 +93,6 @@ export default function QuestionScreen() {
       return () => clearTimeout(timer);
     }
   }, [currentIndex, currentQuestion, speech]);
-
-  const currentQuestion = questions[currentIndex];
 
   const handleAnswer = async (answer: string | number) => {
     haptics.selectionFeedback();
