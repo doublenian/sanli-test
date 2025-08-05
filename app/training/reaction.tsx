@@ -4,11 +4,27 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Zap, Play, RotateCcw, TriangleAlert as AlertTriangle } from 'lucide-react-native';
 
-import { useTraining } from '@/hooks/useSupabaseData';
+interface ReactionTest {
+  id: number;
+  type: 'brake' | 'avoid' | 'ignore';
+  color: string;
+  instruction: string;
+  delay: number;
+}
+
+const reactionTests: ReactionTest[] = [
+  { id: 1, type: 'brake', color: '#DC2626', instruction: '前方障碍物！立即制动', delay: 2000 },
+  { id: 2, type: 'ignore', color: '#16A34A', instruction: '正常行驶信号', delay: 1500 },
+  { id: 3, type: 'brake', color: '#DC2626', instruction: '紧急情况！快速制动', delay: 3000 },
+  { id: 4, type: 'avoid', color: '#EA580C', instruction: '左侧变道避让', delay: 2500 },
+  { id: 5, type: 'brake', color: '#DC2626', instruction: '行人横穿！紧急制动', delay: 1800 },
+  { id: 6, type: 'ignore', color: '#16A34A', instruction: '绿灯正常通行', delay: 2200 },
+  { id: 7, type: 'avoid', color: '#EA580C', instruction: '右侧障碍物避让', delay: 1600 },
+  { id: 8, type: 'brake', color: '#DC2626', instruction: '前车急停！立即刹车', delay: 2800 },
+];
 
 export default function ReactionTrainingScreen() {
   const router = useRouter();
-  const { trainingQuestions, loading: questionsLoading } = useTraining();
   const [gameState, setGameState] = useState<'intro' | 'ready' | 'waiting' | 'signal' | 'result'>('intro');
   const [currentTestIndex, setCurrentTestIndex] = useState(0);
   const [reactionTimes, setReactionTimes] = useState<number[]>([]);
@@ -16,19 +32,9 @@ export default function ReactionTrainingScreen() {
   const [signalStartTime, setSignalStartTime] = useState<number>(0);
   const [countDown, setCountDown] = useState(3);
   const [averageReactionTime, setAverageReactionTime] = useState(0);
-  const [reactionTests, setReactionTests] = useState<any[]>([]);
-  const [config, setConfig] = useState<any>({});
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const currentTest = reactionTests[currentTestIndex];
-
-  useEffect(() => {
-    if (trainingQuestions?.reaction) {
-      setReactionTests(trainingQuestions.reaction.tests || []);
-      setConfig(trainingQuestions.reaction.config || {});
-      setCountDown(trainingQuestions.reaction.config?.countdownTime || 3);
-    }
-  }, [trainingQuestions]);
 
   useEffect(() => {
     if (gameState === 'ready' && countDown > 0) {
@@ -68,7 +74,7 @@ export default function ReactionTrainingScreen() {
     setCurrentTestIndex(0);
     setReactionTimes([]);
     setCorrectResponses([]);
-    setCountDown(config.countdownTime || 3);
+    setCountDown(3);
   };
 
   const handleResponse = (responseType: 'brake' | 'avoid' | 'ignore') => {
@@ -87,7 +93,7 @@ export default function ReactionTrainingScreen() {
     if (currentTestIndex < reactionTests.length - 1) {
       setCurrentTestIndex(currentTestIndex + 1);
       setGameState('ready');
-      setCountDown(config.countdownTime || 3);
+      setCountDown(3);
     } else {
       // Calculate results
       const correctReactions = [...correctResponses, isCorrect];
@@ -106,60 +112,13 @@ export default function ReactionTrainingScreen() {
     if (currentTestIndex < reactionTests.length - 1) {
       setCurrentTestIndex(currentTestIndex + 1);
       setGameState('ready');
-      setCountDown(config.countdownTime || 3);
+      setCountDown(3);
     } else {
       const avgTime = Math.round([...reactionTimes, 9999].reduce((a, b) => a + b, 0) / [...reactionTimes, 9999].length);
       setAverageReactionTime(avgTime);
       setGameState('result');
     }
   };
-
-  const getActionTypeConfig = (type: string) => {
-    const actionTypes = config.actionTypes || {
-      'brake': { color: '#DC2626', label: '制动' },
-      'avoid': { color: '#EA580C', label: '避让' },
-      'ignore': { color: '#16A34A', label: '正常行驶' }
-    };
-    return actionTypes[type] || { color: '#64748B', label: type };
-  };
-
-  const getInstructionItems = () => [
-    {
-      type: 'brake',
-      description: '红色信号 → 点击"制动"按钮'
-    },
-    {
-      type: 'avoid', 
-      description: '橙色信号 → 点击"避让"按钮'
-    },
-    {
-      type: 'ignore',
-      description: '绿色信号 → 不需要操作'
-    }
-  ];
-
-  if (questionsLoading || reactionTests.length === 0) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.headerBackButton}
-            onPress={() => router.back()}
-            activeOpacity={0.8}
-          >
-            <ArrowLeft size={24} color="#1E40AF" strokeWidth={2} />
-          </TouchableOpacity>
-          
-          <Text style={styles.headerTitle}>反应力训练</Text>
-          
-          <View style={styles.headerSpacer} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>加载训练题目中...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   const renderIntro = () => (
     <View style={styles.contentContainer}>
@@ -173,12 +132,18 @@ export default function ReactionTrainingScreen() {
         
         <View style={styles.instructionBox}>
           <Text style={styles.instructionTitle}>操作说明：</Text>
-          {getInstructionItems().map((item, index) => (
-            <View key={index} style={styles.instructionItem}>
-              <View style={[styles.colorDot, { backgroundColor: getActionTypeConfig(item.type).color }]} />
-              <Text style={styles.instructionText}>{item.description}</Text>
-            </View>
-          ))}
+          <View style={styles.instructionItem}>
+            <View style={[styles.colorDot, { backgroundColor: '#DC2626' }]} />
+            <Text style={styles.instructionText}>红色信号 → 点击"制动"按钮</Text>
+          </View>
+          <View style={styles.instructionItem}>
+            <View style={[styles.colorDot, { backgroundColor: '#EA580C' }]} />
+            <Text style={styles.instructionText}>橙色信号 → 点击"避让"按钮</Text>
+          </View>
+          <View style={styles.instructionItem}>
+            <View style={[styles.colorDot, { backgroundColor: '#16A34A' }]} />
+            <Text style={styles.instructionText}>绿色信号 → 不需要操作</Text>
+          </View>
         </View>
 
         <TouchableOpacity
@@ -253,19 +218,19 @@ export default function ReactionTrainingScreen() {
 
       <View style={styles.actionButtons}>
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: getActionTypeConfig('brake').color }]}
+          style={[styles.actionButton, styles.brakeButton]}
           onPress={() => handleResponse('brake')}
           activeOpacity={0.8}
         >
-          <Text style={styles.actionButtonText}>{getActionTypeConfig('brake').label}</Text>
+          <Text style={styles.actionButtonText}>制动</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: getActionTypeConfig('avoid').color }]}
+          style={[styles.actionButton, styles.avoidButton]}
           onPress={() => handleResponse('avoid')}
           activeOpacity={0.8}
         >
-          <Text style={styles.actionButtonText}>{getActionTypeConfig('avoid').label}</Text>
+          <Text style={styles.actionButtonText}>避让</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -389,15 +354,6 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 48,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 18,
-    color: '#64748B',
   },
   contentContainer: {
     flex: 1,
@@ -576,6 +532,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 6,
+  },
+  brakeButton: {
+    backgroundColor: '#DC2626',
+  },
+  avoidButton: {
+    backgroundColor: '#EA580C',
   },
   actionButtonText: {
     fontSize: 20,

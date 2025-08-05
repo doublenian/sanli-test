@@ -531,35 +531,6 @@ export interface Database {
         };
         Returns: void;
       };
-      training_questions: {
-        Row: {
-          id: string;
-          training_type: string;
-          question_data: any;
-          display_order: number | null;
-          is_active: boolean | null;
-          created_at: string | null;
-          updated_at: string | null;
-        };
-        Insert: {
-          id?: string;
-          training_type: string;
-          question_data: any;
-          display_order?: number | null;
-          is_active?: boolean | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-        Update: {
-          id?: string;
-          training_type?: string;
-          question_data?: any;
-          display_order?: number | null;
-          is_active?: boolean | null;
-          created_at?: string | null;
-          updated_at?: string | null;
-        };
-      };
     };
   };
 }

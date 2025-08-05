@@ -322,36 +322,6 @@ export const wrongQuestions = {
   },
 };
 
-// 训练题目相关函数
-export const trainingQuestions = {
-  // 获取指定类型的训练题目
-  async getTrainingQuestions(trainingType: 'memory' | 'judgment' | 'reaction') {
-    const { data, error } = await supabase
-      .from('training_questions')
-      .select('*')
-      .eq('training_type', trainingType)
-      .eq('is_active', true)
-      .order('display_order')
-      .single();
-
-    if (error) throw error;
-    return data?.question_data || null;
-  },
-
-  // 获取所有训练题目
-  async getAllTrainingQuestions() {
-    const { data, error } = await supabase
-      .from('training_questions')
-      .select('*')
-      .eq('is_active', true)
-      .order('training_type', { ascending: true })
-      .order('display_order', { ascending: true });
-
-    if (error) throw error;
-    return data;
-  },
-};
-
 // 训练相关函数
 export const training = {
   // 保存训练记录
