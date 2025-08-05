@@ -3,9 +3,41 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Brain, Eye, Zap, Star } from 'lucide-react-native';
+import { useTraining } from '@/hooks/useSupabaseData';
 
 export default function TrainingScreen() {
   const router = useRouter();
+  const { trainingHistory, loading: trainingLoading } = useTraining();
+
+  // Format training type names
+  const getTrainingTypeName = (type: string) => {
+    switch (type) {
+      case 'memory': return '记忆力训练';
+      case 'judgment': return '判断力训练';
+      case 'reaction': return '反应力训练';
+      default: return type;
+    }
+  };
+
+  // Format date to relative time
+  const formatRelativeDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    } else if (diffDays === 1) {
+      return `昨天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    } else if (diffDays === 2) {
+      return `前天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    } else {
+      return `${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    }
+  };
+
+  // Get recent training records (last 3)
+  const recentTraining = trainingHistory?.slice(0, 3) || [];
 
   const trainingModules = [
     {
@@ -95,26 +127,39 @@ export default function TrainingScreen() {
         </View>
 
         {/* Training History */}
-        <View style={styles.historyCard}>
-          <Text style={styles.historyTitle}>最近训练记录</Text>
-          <View style={styles.historyList}>
-            <View style={styles.historyItem}>
-              <Text style={styles.historyDate}>今天 14:30</Text>
-              <Text style={styles.historyModule}>记忆力训练</Text>
-              <Text style={styles.historyScore}>85分</Text>
-            </View>
-            <View style={styles.historyItem}>
-              <Text style={styles.historyDate}>昨天 10:15</Text>
-              <Text style={styles.historyModule}>判断力训练</Text>
-              <Text style={styles.historyScore}>92分</Text>
-            </View>
-            <View style={styles.historyItem}>
-              <Text style={styles.historyDate}>前天 16:45</Text>
-              <Text style={styles.historyModule}>反应力训练</Text>
-              <Text style={styles.historyScore}>78分</Text>
+        {trainingLoading ? (
+          <View style={styles.historyCard}>
+            <Text style={styles.historyTitle}>最近训练记录</Text>
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>加载训练记录中...</Text>
             </View>
           </View>
-        </View>
+        ) : recentTraining.length > 0 ? (
+          <View style={styles.historyCard}>
+            <Text style={styles.historyTitle}>最近训练记录</Text>
+            <View style={styles.historyList}>
+              {recentTraining.map((record, index) => (
+                <View key={record.id || index} style={styles.historyItem}>
+                  <Text style={styles.historyDate}>
+                    {formatRelativeDate(record.completed_at)}
+                  </Text>
+                  <Text style={styles.historyModule}>
+                    {getTrainingTypeName(record.training_type)}
+                  </Text>
+                  <Text style={styles.historyScore}>{record.score}分</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : (
+          <View style={styles.historyCard}>
+            <Text style={styles.historyTitle}>最近训练记录</Text>
+            <View style={styles.emptyTrainingContainer}>
+              <Text style={styles.emptyTrainingText}>暂无训练记录</Text>
+              <Text style={styles.emptyTrainingSubtext}>完成专项训练后记录将显示在这里</Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -275,5 +320,26 @@ const styles = StyleSheet.create({
     color: '#1E40AF',
     flex: 1,
     textAlign: 'right',
+  },
+  loadingContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#64748B',
+  },
+  emptyTrainingContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  emptyTrainingText: {
+    fontSize: 16,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  emptyTrainingSubtext: {
+    fontSize: 14,
+    color: '#94A3B8',
   },
 });
