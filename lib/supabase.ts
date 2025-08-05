@@ -202,8 +202,8 @@ export const exams = {
   async getUserExamHistory(userId: string, limit: number = 10) {
     const { data, error } = await supabase
       .rpc('get_user_recent_exams', {
-        p_user_id: userId,
         p_limit: limit,
+        p_user_id: userId,
       });
 
     if (error) throw error;
@@ -292,8 +292,8 @@ export const wrongQuestions = {
   async getUserWrongQuestions(userId: string, includeMastered: boolean = false) {
     const { data, error } = await supabase
       .rpc('get_user_wrong_questions', {
-        p_user_id: userId,
         p_include_mastered: includeMastered,
+        p_user_id: userId,
       });
 
     if (error) throw error;
