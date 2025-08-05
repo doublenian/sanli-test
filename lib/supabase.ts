@@ -200,24 +200,13 @@ export const exams = {
 
   // 获取用户考试历史
   async getUserExamHistory(userId: string, limit: number = 10) {
-    const apiUrl = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/get-user-recent-exams`;
-    const headers = {
-      'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
-      'Content-Type': 'application/json',
-    };
-    
-    const url = new URL(apiUrl);
-    url.searchParams.set('p_user_id', userId);
-    url.searchParams.set('p_limit', limit.toString());
-    
-    const response = await fetch(url.toString(), { headers });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
+    const { data, error } = await supabase
+      .rpc('get_user_recent_exams', {
+        p_limit: limit,
+        p_user_id: userId,
+      });
 
+    if (error) throw error;
     return data;
   },
 
@@ -301,13 +290,24 @@ export const practice = {
 export const wrongQuestions = {
   // 获取用户错题
   async getUserWrongQuestions(userId: string, includeMastered: boolean = false) {
-    const { data, error } = await supabase
-      .rpc('get_user_wrong_questions', {
-        p_include_mastered: includeMastered,
-        p_user_id: userId,
-      });
+    const apiUrl = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/get-user-wrong-questions`;
+    const headers = {
+      'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+    };
+    
+    const url = new URL(apiUrl);
+    url.searchParams.set('p_user_id', userId);
+    url.searchParams.set('p_include_mastered', includeMastered.toString());
+    
+    const response = await fetch(url.toString(), { headers });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
 
-    if (error) throw error;
     return data;
   },
 
