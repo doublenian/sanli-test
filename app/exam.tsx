@@ -23,16 +23,20 @@ export default function ExamScreen() {
   const loadExamQuestions = async () => {
     try {
       const data = await questions.getRandomQuestions(20);
+      console.log('Loaded exam questions from DB:', data);
       const formattedQuestions = data.map(q => ({
         id: q.id,
         type: q.type as 'judgment' | 'multiple_choice',
-        category: getCategoryFromId(q.category_id) as 'memory' | 'judgment' | 'reaction',
+        category: getCategoryFromName(q.question_categories?.name) as 'memory' | 'judgment' | 'reaction',
         question: q.question_text,
         options: q.options,
-        correctAnswer: q.type === 'judgment' ? q.correct_answer === 'true' : parseInt(q.correct_answer),
+        correctAnswer: q.type === 'judgment' 
+          ? (q.correct_answer === 'true' || q.correct_answer === true)
+          : parseInt(q.correct_answer),
         explanation: q.explanation,
         imageUrl: q.image_url
       }));
+      console.log('Formatted exam questions:', formattedQuestions);
       setExamQuestions(formattedQuestions);
       setAnswers(new Array(formattedQuestions.length).fill(null));
     } catch (error) {
@@ -42,10 +46,13 @@ export default function ExamScreen() {
     }
   };
 
-  const getCategoryFromId = (categoryId: string) => {
-    // Map category IDs to category names
-    // This is a simplified mapping - you might want to make this more robust
-    return 'judgment'; // Default category
+  const getCategoryFromName = (categoryName: string) => {
+    switch (categoryName) {
+      case '记忆力': return 'memory';
+      case '判断力': return 'judgment';
+      case '反应力': return 'reaction';
+      default: return 'judgment';
+    }
   };
 
   const currentQuestion = examQuestions[currentQuestionIndex];

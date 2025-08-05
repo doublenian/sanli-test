@@ -108,12 +108,24 @@ export const questions = {
 
   // 获取随机题目
   async getRandomQuestions(count: number = 20, categoryId?: string) {
-    const { data, error } = await supabase
-      .rpc('get_random_questions', {
-        p_count: count,
-        p_category_id: categoryId || null,
-      });
+    let query = supabase
+      .from('questions')
+      .select(`
+        *,
+        question_categories (
+          name,
+          description,
+          icon
+        )
+      `)
+      .eq('is_active', true)
+      .limit(count);
 
+    if (categoryId) {
+      query = query.eq('category_id', categoryId);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return data;
   },
@@ -122,7 +134,14 @@ export const questions = {
   async getSequentialQuestions(startIndex: number = 0, count: number = 20, categoryId?: string) {
     let query = supabase
       .from('questions')
-      .select('*')
+      .select(`
+        *,
+        question_categories (
+          name,
+          description,
+          icon
+        )
+      `)
       .eq('is_active', true)
       .range(startIndex, startIndex + count - 1)
       .order('created_at');
