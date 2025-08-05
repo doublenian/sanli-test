@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { Play, BookOpen, Target, TrendingUp } from 'lucide-react-native';
 import { useAuth } from '@/components/AuthProvider';
 import { useExams, useWrongQuestions, usePractice } from '@/hooks/useSupabaseData';
+import { storage } from '@/utils/storage';
 
 const { width } = Dimensions.get('window');
 
@@ -14,10 +15,41 @@ export default function HomeScreen() {
   const { examStats, loading: examLoading } = useExams();
   const { wrongQuestions, loading: wrongQuestionsLoading } = useWrongQuestions();
   const { progress, loading: progressLoading } = usePractice();
+  const [localStats, setLocalStats] = React.useState<any>(null);
+  const [localLoading, setLocalLoading] = React.useState(true);
+
+  // Load local storage data for guest users
+  React.useEffect(() => {
+    if (!user) {
+      loadLocalStats();
+    }
+  }, [user]);
+
+  const loadLocalStats = async () => {
+    try {
+      const [examResults, practiceProgress] = await Promise.all([
+        storage.getExamResults(),
+        storage.getPracticeProgress(),
+      ]);
+      
+      setLocalStats({
+        examResults,
+        practiceProgress,
+      });
+    } catch (error) {
+      console.error('Failed to load local stats:', error);
+    } finally {
+      setLocalLoading(false);
+    }
+  };
 
   // Calculate real stats
   const userStats = React.useMemo(() => {
-    if (examLoading || wrongQuestionsLoading || progressLoading) {
+    const isLoading = user ? 
+      (examLoading || wrongQuestionsLoading || progressLoading) : 
+      localLoading;
+
+    if (isLoading) {
       return {
         completionRate: 0,
         highestScore: 0,
@@ -27,19 +59,45 @@ export default function HomeScreen() {
       };
     }
 
-    // Calculate completion rate from practice progress
-    const totalQuestions = 220; // From question bank
-    const completedQuestions = progress?.reduce((total, p) => total + (p.completed_questions || 0), 0) || 0;
-    const completionRate = Math.round((completedQuestions / totalQuestions) * 100);
+    if (user) {
+      // For authenticated users: use Supabase data
+      const totalQuestions = 220; // From question bank
+      const completedQuestions = progress?.reduce((total, p) => total + (p.completed_questions || 0), 0) || 0;
+      const completionRate = Math.round((completedQuestions / totalQuestions) * 100);
 
-    return {
-      completionRate,
-      highestScore: examStats?.highest_score || 0,
-      averageScore: Math.round(examStats?.average_score || 0),
-      totalExams: examStats?.total_exams || 0,
-      wrongQuestionsCount: wrongQuestions?.length || 0,
-    };
-  }, [examStats, wrongQuestions, progress, examLoading, wrongQuestionsLoading, progressLoading]);
+      return {
+        completionRate,
+        highestScore: examStats?.highest_score || 0,
+        averageScore: Math.round(Number(examStats?.average_score) || 0),
+        totalExams: Number(examStats?.total_exams) || 0,
+        wrongQuestionsCount: wrongQuestions?.length || 0,
+      };
+    } else {
+      // For guest users: use local storage data
+      const examResults = localStats?.examResults || [];
+      const practiceProgress = localStats?.practiceProgress;
+      
+      // Calculate completion rate: completed questions / total questions
+      const totalQuestions = 220;
+      const completedQuestions = practiceProgress?.completedQuestions?.length || 0;
+      const completionRate = Math.round((completedQuestions / totalQuestions) * 100);
+      
+      // Calculate highest score from exams
+      const highestScore = examResults.length > 0 ? Math.max(...examResults.map((exam: any) => exam.score)) : 0;
+      
+      // Calculate average score: total scores / number of exams
+      const totalScore = examResults.reduce((sum: number, exam: any) => sum + exam.score, 0);
+      const averageScore = examResults.length > 0 ? Math.round(totalScore / examResults.length) : 0;
+
+      return {
+        completionRate,
+        highestScore,
+        averageScore,
+        totalExams: examResults.length,
+        wrongQuestionsCount: practiceProgress?.wrongAnswers?.length || 0,
+      };
+    }
+  }, [user, examStats, wrongQuestions, progress, examLoading, wrongQuestionsLoading, progressLoading, localStats, localLoading]);
 
   const mainActions = [
     {
