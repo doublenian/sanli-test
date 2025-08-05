@@ -200,13 +200,24 @@ export const exams = {
 
   // 获取用户考试历史
   async getUserExamHistory(userId: string, limit: number = 10) {
-    const { data, error } = await supabase
-      .rpc('get_user_recent_exams', {
-        p_limit: limit,
-        p_user_id: userId,
-      });
+    const apiUrl = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/get-user-recent-exams`;
+    const headers = {
+      'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
+      'Content-Type': 'application/json',
+    };
+    
+    const url = new URL(apiUrl);
+    url.searchParams.set('p_user_id', userId);
+    url.searchParams.set('p_limit', limit.toString());
+    
+    const response = await fetch(url.toString(), { headers });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
 
-    if (error) throw error;
     return data;
   },
 
