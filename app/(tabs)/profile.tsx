@@ -8,7 +8,7 @@ import { useExams, useWrongQuestions, useTraining } from '@/hooks/useSupabaseDat
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const { examHistory, examStats, loading: examLoading } = useExams();
   const { wrongQuestions, loading: wrongQuestionsLoading } = useWrongQuestions();
   const { trainingHistory, loading: trainingLoading } = useTraining();
