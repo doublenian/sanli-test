@@ -3,23 +3,26 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Brain, Play, RotateCcw } from 'lucide-react-native';
-
-const memoryItems = [
-  { id: 1, name: '苹果', emoji: '🍎' },
-  { id: 2, name: '钥匙', emoji: '🔑' },
-  { id: 3, name: '帽子', emoji: '👒' },
-  { id: 4, name: '手表', emoji: '⌚' },
-  { id: 5, name: '眼镜', emoji: '👓' },
-  { id: 6, name: '手机', emoji: '📱' },
-];
+import { useTraining } from '@/hooks/useSupabaseData';
 
 export default function MemoryTrainingScreen() {
   const router = useRouter();
+  const { trainingQuestions, loading: questionsLoading } = useTraining();
   const [gameState, setGameState] = useState<'intro' | 'memorize' | 'distraction' | 'test' | 'result'>('intro');
   const [itemsToRemember, setItemsToRemember] = useState<typeof memoryItems>([]);
   const [timeLeft, setTimeLeft] = useState(10);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
   const [score, setScore] = useState(0);
+  const [memoryItems, setMemoryItems] = useState<any[]>([]);
+  const [config, setConfig] = useState<any>({});
+
+  useEffect(() => {
+    if (trainingQuestions?.memory) {
+      setMemoryItems(trainingQuestions.memory.items || []);
+      setConfig(trainingQuestions.memory.config || {});
+      setTimeLeft(trainingQuestions.memory.config?.memorizeTime || 10);
+    }
+  }, [trainingQuestions]);
 
   useEffect(() => {
     if ((gameState === 'memorize' || gameState === 'distraction') && timeLeft > 0) {
@@ -28,7 +31,7 @@ export default function MemoryTrainingScreen() {
     } else if (timeLeft === 0) {
       if (gameState === 'memorize') {
         setGameState('distraction');
-        setTimeLeft(5);
+        setTimeLeft(config.distractionTime || 5);
       } else if (gameState === 'distraction') {
         setGameState('test');
       }
@@ -37,10 +40,11 @@ export default function MemoryTrainingScreen() {
 
   const startGame = () => {
     // Select 4 random items to remember
+    const itemsCount = config.itemsToRemember || 4;
     const shuffled = [...memoryItems].sort(() => 0.5 - Math.random());
-    setItemsToRemember(shuffled.slice(0, 4));
+    setItemsToRemember(shuffled.slice(0, itemsCount));
     setGameState('memorize');
-    setTimeLeft(10);
+    setTimeLeft(config.memorizeTime || 10);
     setSelectedAnswers([]);
     setScore(0);
   };
@@ -58,7 +62,9 @@ export default function MemoryTrainingScreen() {
     const correctAnswers = selectedAnswers.filter(id => correctItems.includes(id));
     const incorrectAnswers = selectedAnswers.filter(id => !correctItems.includes(id));
     
-    const newScore = Math.max(0, (correctAnswers.length * 25) - (incorrectAnswers.length * 10));
+    const correctPoints = config.correctPoints || 25;
+    const incorrectPenalty = config.incorrectPenalty || 10;
+    const newScore = Math.max(0, (correctAnswers.length * correctPoints) - (incorrectAnswers.length * incorrectPenalty));
     setScore(newScore);
     setGameState('result');
   };
@@ -75,10 +81,10 @@ export default function MemoryTrainingScreen() {
         
         <View style={styles.instructionBox}>
           <Text style={styles.instructionTitle}>游戏规则：</Text>
-          <Text style={styles.instructionText}>• 观看时间：10秒</Text>
-          <Text style={styles.instructionText}>• 记忆物品：4个</Text>
-          <Text style={styles.instructionText}>• 选对得分：25分/个</Text>
-          <Text style={styles.instructionText}>• 选错扣分：10分/个</Text>
+          <Text style={styles.instructionText}>• 观看时间：{config.memorizeTime || 10}秒</Text>
+          <Text style={styles.instructionText}>• 记忆物品：{config.itemsToRemember || 4}个</Text>
+          <Text style={styles.instructionText}>• 选对得分：{config.correctPoints || 25}分/个</Text>
+          <Text style={styles.instructionText}>• 选错扣分：{config.incorrectPenalty || 10}分/个</Text>
         </View>
 
         <TouchableOpacity
@@ -272,11 +278,17 @@ export default function MemoryTrainingScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
+      {questionsLoading ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>加载训练题目中...</Text>
+        </View>
+      ) : (
       {gameState === 'intro' && renderIntro()}
       {gameState === 'memorize' && renderMemorize()}
       {gameState === 'distraction' && renderDistraction()}
       {gameState === 'test' && renderTest()}
       {gameState === 'result' && renderResult()}
+      )}
     </SafeAreaView>
   );
 }
@@ -311,6 +323,15 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 48,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#64748B',
   },
   contentContainer: {
     flex: 1,

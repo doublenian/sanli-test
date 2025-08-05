@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { questions, exams, practice, wrongQuestions, training, userSettings } from '@/lib/supabase';
+import { questions, exams, practice, wrongQuestions, training, trainingQuestions, userSettings } from '@/lib/supabase';
 import { Question } from '@/types/question';
 
 // Hook for managing questions data
@@ -229,12 +229,14 @@ export function useWrongQuestions() {
 export function useTraining() {
   const { user } = useAuth();
   const [trainingHistory, setTrainingHistory] = useState<any[]>([]);
+  const [trainingQuestions, setTrainingQuestions] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
       loadTrainingHistory();
     }
+    loadTrainingQuestions();
   }, [user]);
 
   const loadTrainingHistory = async () => {
@@ -247,6 +249,19 @@ export function useTraining() {
       console.error('Error loading training history:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTrainingQuestions = async () => {
+    try {
+      const data = await trainingQuestions.getAllTrainingQuestions();
+      const questionsMap = data.reduce((acc, item) => {
+        acc[item.training_type] = item.question_data;
+        return acc;
+      }, {});
+      setTrainingQuestions(questionsMap);
+    } catch (error) {
+      console.error('Error loading training questions:', error);
     }
   };
 
@@ -265,8 +280,10 @@ export function useTraining() {
 
   return {
     trainingHistory,
+    trainingQuestions,
     loading,
     saveTrainingRecord,
+    loadTrainingQuestions,
     refreshData: loadTrainingHistory,
   };
 }

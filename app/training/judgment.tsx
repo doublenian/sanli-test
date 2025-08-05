@@ -4,88 +4,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Eye, Play, RotateCcw } from 'lucide-react-native';
 
-const trafficScenarios = [
-  {
-    id: 1,
-    scenario: "前方出现校车停车上下学生",
-    image: "https://images.pexels.com/photos/159558/yellow-school-bus-driving-children-159558.jpeg",
-    question: "此时您应该怎么做？",
-    options: [
-      "鸣笛催促校车快速通过",
-      "减速慢行，保持安全距离", 
-      "加速从左侧超越校车",
-      "紧跟校车后方通过"
-    ],
-    correctAnswer: 1,
-    explanation: "遇到校车上下学生时，应当减速慢行并保持安全距离，确保学生安全。严禁鸣笛催促或强行超越。"
-  },
-  {
-    id: 2,
-    scenario: "雨天行驶，前方车辆急刹车",
-    image: "https://images.pexels.com/photos/210126/pexels-photo-210126.jpeg",
-    question: "在这种情况下，正确的做法是？",
-    options: [
-      "立即急刹车跟着停下",
-      "轻踩制动，逐渐减速",
-      "向左变道避开前车",
-      "加速从右侧超越"
-    ],
-    correctAnswer: 1,
-    explanation: "雨天路面湿滑，应当轻踩制动逐渐减速，避免急刹车导致车辆失控或追尾事故。"
-  },
-  {
-    id: 3,
-    scenario: "高速公路上发现前方有事故",
-    image: "https://images.pexels.com/photos/2365457/pexels-photo-2365457.jpeg",
-    question: "发现前方有交通事故时应该？",
-    options: [
-      "立即停车查看情况",
-      "减速慢行，注意避让",
-      "鸣笛提醒其他车辆",
-      "拍照发朋友圈"
-    ],
-    correctAnswer: 1,
-    explanation: "发现前方事故时应减速慢行，注意避让，确保自身安全。不应停车围观或做其他妨碍交通的行为。"
-  },
-  {
-    id: 4,
-    scenario: "夜间会车遇到远光灯照射",
-    image: "https://images.pexels.com/photos/210199/pexels-photo-210199.jpeg",
-    question: "被对方远光灯照射影响视线时应该？",
-    options: [
-      "用远光灯回射对方",
-      "减速慢行，必要时停车避让",
-      "加速快速通过会车点",
-      "紧急制动立即停车"
-    ],
-    correctAnswer: 1,
-    explanation: "遇到远光灯照射时应减速慢行，必要时可停车避让，等待视线恢复后再继续行驶。不应用远光灯回射。"
-  },
-  {
-    id: 5,
-    scenario: "城市道路遇到救护车鸣笛",
-    image: "https://images.pexels.com/photos/263402/pexels-photo-263402.jpeg",
-    question: "听到救护车鸣笛声应该？",
-    options: [
-      "保持原车道正常行驶",
-      "立即靠边停车让行",
-      "加速抢在救护车前通过",
-      "跟在救护车后方行驶"
-    ],
-    correctAnswer: 1,
-    explanation: "听到救护车等特种车辆鸣笛时，应立即靠边停车让行，为抢救生命让出通道。"
-  }
-];
+import { useTraining } from '@/hooks/useSupabaseData';
 
 export default function JudgmentTrainingScreen() {
   const router = useRouter();
+  const { trainingQuestions, loading: questionsLoading } = useTraining();
   const [gameState, setGameState] = useState<'intro' | 'playing' | 'result'>('intro');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<number[]>([]);
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(60);
+  const [trafficScenarios, setTrafficScenarios] = useState<any[]>([]);
+  const [config, setConfig] = useState<any>({});
 
   const currentScenario = trafficScenarios[currentIndex];
+
+  useEffect(() => {
+    if (trainingQuestions?.judgment) {
+      setTrafficScenarios(trainingQuestions.judgment.scenarios || []);
+      setConfig(trainingQuestions.judgment.config || {});
+      setTimeLeft(trainingQuestions.judgment.config?.thinkingTime || 60);
+    }
+  }, [trainingQuestions]);
 
   useEffect(() => {
     if (gameState === 'playing' && timeLeft > 0) {
@@ -102,7 +42,7 @@ export default function JudgmentTrainingScreen() {
     setCurrentIndex(0);
     setUserAnswers([]);
     setScore(0);
-    setTimeLeft(60);
+    setTimeLeft(config.thinkingTime || 60);
   };
 
   const handleAnswer = (answerIndex: number) => {
@@ -110,18 +50,19 @@ export default function JudgmentTrainingScreen() {
     setUserAnswers(newAnswers);
 
     if (answerIndex === currentScenario.correctAnswer) {
-      setScore(score + 20);
+      const pointsPerQuestion = config.pointsPerQuestion || 20;
+      setScore(score + pointsPerQuestion);
     }
 
     // Move to next question or finish
     if (currentIndex < trafficScenarios.length - 1) {
       setCurrentIndex(currentIndex + 1);
-      setTimeLeft(60);
+      setTimeLeft(config.thinkingTime || 60);
     } else {
       // Calculate final score
       const finalScore = newAnswers.reduce((acc, answer, index) => {
         if (answer === trafficScenarios[index].correctAnswer) {
-          return acc + 20;
+          return acc + (config.pointsPerQuestion || 20);
         }
         return acc;
       }, 0);
@@ -143,8 +84,8 @@ export default function JudgmentTrainingScreen() {
         <View style={styles.instructionBox}>
           <Text style={styles.instructionTitle}>训练规则：</Text>
           <Text style={styles.instructionText}>• 场景题目：5个</Text>
-          <Text style={styles.instructionText}>• 思考时间：60秒/题</Text>
-          <Text style={styles.instructionText}>• 答对得分：20分/题</Text>
+          <Text style={styles.instructionText}>• 思考时间：{config.thinkingTime || 60}秒/题</Text>
+          <Text style={styles.instructionText}>• 答对得分：{config.pointsPerQuestion || 20}分/题</Text>
           <Text style={styles.instructionText}>• 超时算错：0分</Text>
         </View>
 
@@ -277,9 +218,15 @@ export default function JudgmentTrainingScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
+      {questionsLoading || trafficScenarios.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>加载训练题目中...</Text>
+        </View>
+      ) : (
       {gameState === 'intro' && renderIntro()}
       {gameState === 'playing' && renderGame()}
       {gameState === 'result' && renderResult()}
+      )}
     </SafeAreaView>
   );
 }
@@ -314,6 +261,15 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 48,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#64748B',
   },
   contentContainer: {
     flex: 1,
