@@ -3,20 +3,44 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { BookOpen, Shuffle, CircleCheck as CheckCircle, Circle as XCircle } from 'lucide-react-native';
+import { useAuth } from '@/components/AuthProvider';
+import { usePractice, useWrongQuestions } from '@/hooks/useSupabaseData';
 
 export default function PracticeScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { progress, loading: progressLoading } = usePractice();
+  const { wrongQuestions, loading: wrongQuestionsLoading } = useWrongQuestions();
   const [selectedMode, setSelectedMode] = useState<'sequential' | 'random' | null>(null);
 
-  const practiceStats = {
-    totalQuestions: 220,
-    completedQuestions: 143,
-    correctAnswers: 128,
-    wrongAnswers: 15,
-  };
+  // Calculate real practice stats
+  const practiceStats = React.useMemo(() => {
+    if (progressLoading || wrongQuestionsLoading) {
+      return {
+        totalQuestions: 220,
+        completedQuestions: 0,
+        correctAnswers: 0,
+        wrongAnswers: 0,
+      };
+    }
+
+    const totalQuestions = 220; // From question bank
+    const completedQuestions = progress?.reduce((total, p) => total + (p.completed_questions || 0), 0) || 0;
+    const correctAnswers = progress?.reduce((total, p) => total + (p.correct_questions || 0), 0) || 0;
+    const wrongAnswers = wrongQuestions?.length || 0;
+
+    return {
+      totalQuestions,
+      completedQuestions,
+      correctAnswers,
+      wrongAnswers,
+    };
+  }, [progress, wrongQuestions, progressLoading, wrongQuestionsLoading]);
 
   const completionRate = Math.round((practiceStats.completedQuestions / practiceStats.totalQuestions) * 100);
-  const accuracyRate = Math.round((practiceStats.correctAnswers / practiceStats.completedQuestions) * 100);
+  const accuracyRate = practiceStats.completedQuestions > 0 
+    ? Math.round((practiceStats.correctAnswers / practiceStats.completedQuestions) * 100)
+    : 0;
 
   return (
     <SafeAreaView style={styles.container}>
