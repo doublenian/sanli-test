@@ -283,11 +283,13 @@ export default function MemoryTrainingScreen() {
           <Text style={styles.loadingText}>加载训练题目中...</Text>
         </View>
       ) : (
-      {gameState === 'intro' && renderIntro()}
-      {gameState === 'memorize' && renderMemorize()}
-      {gameState === 'distraction' && renderDistraction()}
-      {gameState === 'test' && renderTest()}
-      {gameState === 'result' && renderResult()}
+        <>
+          {gameState === 'intro' && renderIntro()}
+          {gameState === 'memorize' && renderMemorize()}
+          {gameState === 'distraction' && renderDistraction()}
+          {gameState === 'test' && renderTest()}
+          {gameState === 'result' && renderResult()}
+        </>
       )}
     </SafeAreaView>
   );
