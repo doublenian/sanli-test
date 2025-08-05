@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Trophy, Clock, BookOpen, Circle as XCircle, TrendingUp, Calendar, LogOut } from 'lucide-react-native';
 import { useAuth } from '@/components/AuthProvider';
 import { useExams, useWrongQuestions, useTraining } from '@/hooks/useSupabaseData';
@@ -12,6 +12,16 @@ export default function ProfileScreen() {
   const { examHistory, examStats, loading: examLoading } = useExams();
   const { wrongQuestions, loading: wrongQuestionsLoading } = useWrongQuestions();
   const { trainingHistory, loading: trainingLoading } = useTraining();
+
+  // 当页面获得焦点时检查登录状态
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!loading && !user) {
+        // 用户未登录，跳转到登录页面
+        router.replace('/auth/login');
+      }
+    }, [user, loading, router])
+  );
 
   // Calculate user stats from real data
   const userStats = React.useMemo(() => {
