@@ -53,6 +53,8 @@ export default function RegisterScreen() {
       let errorMessage = '注册过程中出现错误，请重试';
       if (error.message && error.message.includes('over_email_send_rate_limit')) {
         errorMessage = '发送邮件过于频繁，请等待50秒后再试';
+      } else if (error.message && error.message.includes('User already registered')) {
+        errorMessage = '该邮箱已被注册，请直接登录或使用其他邮箱注册。';
       } else if (error.message) {
         errorMessage = error.message;
       }
