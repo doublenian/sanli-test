@@ -60,6 +60,9 @@ export function useExams() {
   useEffect(() => {
     if (user) {
       loadExamData();
+    } else {
+      // 游客模式下直接设置 loading 为 false
+      setLoading(false);
     }
   }, [user]);
 
@@ -121,6 +124,9 @@ export function usePractice() {
   useEffect(() => {
     if (user) {
       loadProgress();
+    } else {
+      // 游客模式下直接设置 loading 为 false
+      setLoading(false);
     }
   }, [user]);
 
@@ -179,6 +185,9 @@ export function useWrongQuestions() {
   useEffect(() => {
     if (user) {
       loadWrongQuestions();
+    } else {
+      // 游客模式下直接设置 loading 为 false
+      setLoading(false);
     }
   }, [user]);
 
@@ -235,6 +244,9 @@ export function useTraining() {
   useEffect(() => {
     if (user) {
       loadTrainingHistory();
+    } else {
+      // 游客模式下直接设置 loading 为 false
+      setLoading(false);
     }
   }, [user]);
 
