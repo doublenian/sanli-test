@@ -438,7 +438,7 @@ export interface Database {
           total_passed: string;    // COUNT(*) FILTER returns bigint -> string
           highest_score: number;   // MAX(score) returns integer -> number
           average_score: string;   // AVG(score) returns numeric -> string
-          total_study_time: number; // SUM(time_spent) returns bigint -> number
+          total_study_time: string; // SUM(time_spent) returns bigint -> string
           pass_rate: string;       // ROUND(...) returns numeric -> string
         };
       };

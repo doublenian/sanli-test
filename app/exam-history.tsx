@@ -106,7 +106,7 @@ export default function ExamHistoryScreen() {
                 <Text style={styles.statLabel}>最高分</Text>
               </View>
               <View style={styles.statItem}>
-                <CircleCheck size={24} color="#16A34A" strokeWidth={2} />
+                <CheckCircle size={24} color="#16A34A" strokeWidth={2} />
                 <Text style={styles.statNumber}>{stats.average}</Text>
                 <Text style={styles.statLabel}>平均分</Text>
               </View>
