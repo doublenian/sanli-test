@@ -7,6 +7,17 @@ import { questionBank, getRandomQuestions, getSequentialQuestions } from '@/data
 import { storage } from '@/utils/storage';
 import { Question } from '@/types/question';
 import { useSpeech } from '@/hooks/useSpeech';
+import { useHaptics } from '@/hooks/useHaptics';
+import { FadeInView } from '@/components/FadeInView';
+import { AnimatedButton } from '@/components/AnimatedButton';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 export default function QuestionScreen() {
   const router = useRouter();
@@ -18,6 +29,11 @@ export default function QuestionScreen() {
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   const [isFavorite, setIsFavorite] = useState(false);
   const speech = useSpeech();
+  const haptics = useHaptics();
+  
+  // Animation values
+  const optionScales = useSharedValue(questions.map(() => 1));
+  const resultOpacity = useSharedValue(0);
 
   useEffect(() => {
     loadQuestions();
@@ -51,6 +67,8 @@ export default function QuestionScreen() {
   const toggleFavorite = async () => {
     if (!currentQuestion) return;
     
+    haptics.lightImpact();
+    
     if (isFavorite) {
       await storage.removeFavoriteQuestion(currentQuestion.id);
       setIsFavorite(false);
@@ -75,6 +93,8 @@ export default function QuestionScreen() {
   const currentQuestion = questions[currentIndex];
 
   const handleAnswer = async (answer: string | number) => {
+    haptics.selectionFeedback();
+    
     setUserAnswer(answer);
     setShowExplanation(true);
     setAnsweredQuestions(prev => new Set([...prev, currentIndex]));
@@ -88,6 +108,16 @@ export default function QuestionScreen() {
 
     // Update practice progress and handle wrong answers
     const isCorrect = answer === currentQuestion.correctAnswer;
+    
+    // 触觉反馈根据答案正确性
+    setTimeout(() => {
+      if (isCorrect) {
+        haptics.notificationFeedback('success');
+      } else {
+        haptics.notificationFeedback('error');
+      }
+    }, 500);
+    
     await storage.updatePracticeProgress(currentQuestion.id, isCorrect);
     
     if (!isCorrect) {
@@ -96,6 +126,8 @@ export default function QuestionScreen() {
   };
 
   const nextQuestion = () => {
+    haptics.lightImpact();
+    
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setUserAnswer(null);
@@ -107,6 +139,8 @@ export default function QuestionScreen() {
   };
 
   const previousQuestion = () => {
+    haptics.lightImpact();
+    
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
       setUserAnswer(null);
@@ -132,7 +166,10 @@ export default function QuestionScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => {
+            haptics.lightImpact();
+            router.back();
+          }}
           activeOpacity={0.8}
         >
           <ArrowLeft size={24} color="#1E40AF" strokeWidth={2} />
@@ -145,6 +182,7 @@ export default function QuestionScreen() {
         <TouchableOpacity
           style={styles.voiceButton}
           onPress={() => {
+            haptics.lightImpact();
             speech.speakQuestion(currentQuestion.question, currentQuestion.type);
           }}
           activeOpacity={0.8}
@@ -155,9 +193,9 @@ export default function QuestionScreen() {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Progress Indicator */}
-        <View style={styles.progressContainer}>
+        <FadeInView style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View 
+            <Animated.View 
               style={[
                 styles.progressFill, 
                 { width: `${((currentIndex + 1) / questions.length) * 100}%` }
@@ -180,10 +218,10 @@ export default function QuestionScreen() {
               fill={isFavorite ? "#F59E0B" : "none"}
             />
           </TouchableOpacity>
-        </View>
+        </FadeInView>
 
         {/* Question Card */}
-        <View style={styles.questionCard}>
+        <FadeInView delay={200} style={styles.questionCard}>
           <View style={styles.questionHeader}>
             <Text style={styles.questionNumber}>
               第 {currentIndex + 1} 题
@@ -209,7 +247,7 @@ export default function QuestionScreen() {
           <View style={styles.optionsContainer}>
             {currentQuestion.type === 'judgment' ? (
               <View style={styles.judgmentOptions}>
-                <TouchableOpacity
+                <AnimatedTouchableOpacity
                   style={[
                     styles.judgmentButton,
                     userAnswer === true && styles.selectedOption,
@@ -227,9 +265,9 @@ export default function QuestionScreen() {
                   ]}>
                     正确
                   </Text>
-                </TouchableOpacity>
+                </AnimatedTouchableOpacity>
                 
-                <TouchableOpacity
+                <AnimatedTouchableOpacity
                   style={[
                     styles.judgmentButton,
                     userAnswer === false && styles.selectedOption,
@@ -247,12 +285,12 @@ export default function QuestionScreen() {
                   ]}>
                     错误
                   </Text>
-                </TouchableOpacity>
+                </AnimatedTouchableOpacity>
               </View>
             ) : (
               <View style={styles.multipleChoiceOptions}>
                 {currentQuestion.options?.map((option, index) => (
-                  <TouchableOpacity
+                  <AnimatedTouchableOpacity
                     key={index}
                     style={[
                       styles.optionButton,
@@ -273,7 +311,7 @@ export default function QuestionScreen() {
                     ]}>
                       {option}
                     </Text>
-                  </TouchableOpacity>
+                  </AnimatedTouchableOpacity>
                 ))}
               </View>
             )}
@@ -281,7 +319,7 @@ export default function QuestionScreen() {
 
           {/* Answer Result */}
           {showExplanation && (
-            <View style={styles.resultContainer}>
+            <FadeInView delay={300} style={styles.resultContainer}>
               <View style={[
                 styles.resultHeader,
                 isCorrect ? styles.correctResult : styles.incorrectResult
@@ -320,6 +358,7 @@ export default function QuestionScreen() {
                 <TouchableOpacity
                   style={styles.removeFromErrorsButton}
                   onPress={async () => {
+                    haptics.mediumImpact();
                     await storage.removeWrongQuestion(currentQuestion.id);
                     // Remove from current questions list and go to next
                     const newQuestions = questions.filter(q => q.id !== currentQuestion.id);
@@ -336,50 +375,36 @@ export default function QuestionScreen() {
                   <Text style={styles.removeFromErrorsText}>从错题本中移除</Text>
                 </TouchableOpacity>
               )}
-            </View>
+            </FadeInView>
           )}
-        </View>
+        </FadeInView>
       </ScrollView>
 
       {/* Navigation */}
       <View style={styles.navigationContainer}>
-        <TouchableOpacity
-          style={[styles.navButton, currentIndex === 0 && styles.navButtonDisabled]}
+        <AnimatedButton
+          title="上一题"
           onPress={previousQuestion}
           disabled={currentIndex === 0}
-          activeOpacity={0.8}
-        >
-          <Text style={[
-            styles.navButtonText,
-            currentIndex === 0 && styles.navButtonTextDisabled
-          ]}>
-            上一题
-          </Text>
-        </TouchableOpacity>
+          variant={currentIndex === 0 ? 'secondary' : 'primary'}
+          hapticType="light"
+          style={{ flex: 1, marginRight: 8 }}
+        />
 
-        <TouchableOpacity
-          style={[
-            styles.navButton,
-            !showExplanation && styles.navButtonDisabled,
-            currentIndex === questions.length - 1 && styles.finishButton
-          ]}
+        <AnimatedButton
+          title={currentIndex === questions.length - 1 ? '完成练习' : '下一题'}
           onPress={nextQuestion}
           disabled={!showExplanation}
-          activeOpacity={0.8}
-        >
-          <Text style={[
-            styles.navButtonText,
-            !showExplanation && styles.navButtonTextDisabled,
-            currentIndex === questions.length - 1 && styles.finishButtonText
-          ]}>
-            {currentIndex === questions.length - 1 ? '完成练习' : '下一题'}
-          </Text>
-        </TouchableOpacity>
+          variant={currentIndex === questions.length - 1 ? 'success' : 'primary'}
+          hapticType="medium"
+          style={{ flex: 1, marginLeft: 8 }}
+        />
       </View>
     </SafeAreaView>
   );
 }
 
+// 样式保持不变，只是移除了部分不再使用的样式
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -448,6 +473,9 @@ const styles = StyleSheet.create({
     color: '#64748B',
     textAlign: 'center',
     fontWeight: '500',
+  },
+  favoriteButton: {
+    padding: 4,
   },
   questionCard: {
     backgroundColor: '#FFFFFF',
@@ -557,9 +585,6 @@ const styles = StyleSheet.create({
     color: '#16A34A',
     fontWeight: '600',
   },
-  favoriteButton: {
-    padding: 4,
-  },
   incorrectOption: {
     backgroundColor: '#FEF2F2',
     borderColor: '#DC2626',
@@ -623,33 +648,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
-    gap: 16,
-  },
-  navButton: {
-    flex: 1,
-    backgroundColor: '#1E40AF',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 56,
-  },
-  navButtonDisabled: {
-    backgroundColor: '#E2E8F0',
-  },
-  navButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  navButtonTextDisabled: {
-    color: '#94A3B8',
-  },
-  finishButton: {
-    backgroundColor: '#16A34A',
-  },
-  finishButtonText: {
-    color: '#FFFFFF',
   },
   removeFromErrorsButton: {
     backgroundColor: '#16A34A',

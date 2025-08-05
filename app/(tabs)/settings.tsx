@@ -3,9 +3,12 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 're
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Volume2, Type, Globe, CircleHelp as HelpCircle, Info, ChevronRight, Moon, Palette } from 'lucide-react-native';
 import { useUserSettings } from '@/hooks/useSupabaseData';
+import { useHaptics } from '@/hooks/useHaptics';
+import { FadeInView, AnimatedListItem } from '@/components/FadeInView';
 
 export default function SettingsScreen() {
   const { settings, updateSettings, loading } = useUserSettings();
+  const haptics = useHaptics();
   
   if (loading || !settings) {
     return (
@@ -71,6 +74,14 @@ export default function SettingsScreen() {
           type: 'switch',
           onChange: (value: boolean) => updateSettings({ voice_enabled: value }),
         },
+        {
+          title: '触觉反馈',
+          subtitle: '按钮点击时的振动反馈',
+          icon: Volume2,
+          value: settings.haptics_enabled !== false,
+          type: 'switch',
+          onChange: (value: boolean) => updateSettings({ haptics_enabled: value }),
+        },
       ],
     },
     {
@@ -96,44 +107,320 @@ export default function SettingsScreen() {
 
   const renderSettingItem = (item: any, index: number, sectionItems: any[]) => {
     return (
-      <TouchableOpacity
+      <AnimatedListItem
         key={index}
-        style={[
-          styles.settingItemTouchable,
-          index < sectionItems.length - 1 && styles.settingItemBorder
-        ]}
-        onPress={() => {
-          if (item.type === 'select') {
-            // Handle select option cycling
-            const currentIndex = item.options.indexOf(item.value);
-            const nextIndex = (currentIndex + 1) % item.options.length;
-            item.onChange(item.options[nextIndex]);
-          } else if (item.onPress) {
-            item.onPress();
-          }
-        }}
-        disabled={item.type === 'switch'}
-        activeOpacity={item.type === 'switch' ? 1 : 0.8}
+        index={index}
       >
-        <View style={styles.settingItem}>
-        <View style={styles.settingIcon}>
-          <item.icon size={24} color="#1E40AF" strokeWidth={2} />
-        </View>
-        
-        <View style={styles.settingContent}>
-          <Text style={styles.settingTitle}>{item.title}</Text>
-          <Text style={styles.settingSubtitle}>{item.subtitle}</Text>
-        </View>
+        <TouchableOpacity
+          style={[
+            styles.settingItemTouchable,
+            index < sectionItems.length - 1 && styles.settingItemBorder
+          ]}
+          onPress={() => {
+            if (item.type === 'select') {
+              haptics.selectionFeedback();
+              // Handle select option cycling
+              const currentIndex = item.options.indexOf(item.value);
+              const nextIndex = (currentIndex + 1) % item.options.length;
+              item.onChange(item.options[nextIndex]);
+            } else if (item.onPress) {
+              haptics.lightImpact();
+              item.onPress();
+            }
+          }}
+          disabled={item.type === 'switch'}
+          activeOpacity={item.type === 'switch' ? 1 : 0.8}
+        >
+          <View style={styles.settingItem}>
+            <View style={styles.settingIcon}>
+              <item.icon size={24} color="#1E40AF" strokeWidth={2} />
+            </View>
+            
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>{item.title}</Text>
+              <Text style={styles.settingSubtitle}>{item.subtitle}</Text>
+            </View>
 
-        <View style={styles.settingControl}>
-          {item.type === 'switch' && (
-            <Switch
-              value={item.value}
-              onValueChange={item.onChange}
-              trackColor={{ false: '#E2E8F0', true: '#16A34A' }}
-              thumbColor={item.value ? '#FFFFFF' : '#F1F5F9'}
-              style={{ transform: [{ scaleX: 1.2 }, { scaleY: 1.2 }] }}
-            />
+            <View style={styles.settingControl}>
+              {item.type === 'switch' && (
+                <Switch
+                  value={item.value}
+                  onValueChange={(value) => {
+                    haptics.selectionFeedback();
+                    item.onChange(value);
+                  }}
+                  trackColor={{ false: '#E2E8F0', true: '#16A34A' }}
+                  thumbColor={item.value ? '#FFFFFF' : '#F1F5F9'}
+                  style={{ transform: [{ scaleX: 1.2 }, { scaleY: 1.2 }] }}
+                />
+              )}
+              
+              {item.type === 'select' && (
+                <View style={styles.selectContainer}>
+                  <Text style={styles.selectValue}>
+                    {item.optionLabels ? item.optionLabels[item.value] : item.value}
+                  </Text>
+                  <ChevronRight size={20} color="#64748B" strokeWidth={2} />
+                </View>
+              )}
+              
+              {item.type === 'navigation' && (
+                <ChevronRight size={24} color="#64748B" strokeWidth={2} />
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </AnimatedListItem>
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <FadeInView style={styles.header}>
+          <Text style={styles.title}>设置</Text>
+          <Text style={styles.subtitle}>个性化您的学习体验</Text>
+        </FadeInView>
+
+        {/* Font Size Preview */}
+        <FadeInView delay={200} style={styles.previewCard}>
+          <Text style={styles.previewTitle}>字体大小预览</Text>
+          <View style={styles.fontPreview}>
+            <Text style={[
+              styles.previewText,
+              settings.font_size === 'standard' && { fontSize: 16 },
+              settings.font_size === 'large' && { fontSize: 20 },
+              settings.font_size === 'extra_large' && { fontSize: 24 },
+            ]}>
+              将转向灯开关向下拉，右转向灯会亮起。
+            </Text>
+          </View>
+          <View style={styles.fontSizeButtons}>
+            {fontSizes.map((size, index) => (
+              <TouchableOpacity
+                key={size}
+                style={[
+                  styles.fontSizeButton,
+                  settings.font_size === size && styles.fontSizeButtonActive
+                ]}
+                onPress={() => {
+                  haptics.selectionFeedback();
+                  updateSettings({ font_size: size });
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={[
+                  styles.fontSizeButtonText,
+                  settings.font_size === size && styles.fontSizeButtonTextActive
+                ]}>
+                  {fontSizeLabels[size as keyof typeof fontSizeLabels]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </FadeInView>
+
+        {/* Settings Sections */}
+        {settingSections.map((section, sectionIndex) => (
+          <FadeInView key={sectionIndex} delay={300 + sectionIndex * 100} style={styles.settingSection}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <View style={styles.sectionCard}>
+              {section.items.map((item, itemIndex) => (
+                renderSettingItem(item, itemIndex, section.items)
+              ))}
+            </View>
+          </FadeInView>
+        ))}
+
+        {/* App Info */}
+        <FadeInView delay={800} style={styles.appInfo}>
+          <Text style={styles.appVersion}>版本 1.0.1</Text>
+          <Text style={styles.appCopyright}>© 2025 三力测试通团队</Text>
+        </FadeInView>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#64748B',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  header: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 30,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  previewCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginBottom: 24,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  previewTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  fontPreview: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  previewText: {
+    color: '#1E293B',
+    textAlign: 'center',
+    lineHeight: 28,
+  },
+  fontSizeButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  fontSizeButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  fontSizeButtonActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#1E40AF',
+  },
+  fontSizeButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  fontSizeButtonTextActive: {
+    color: '#1E40AF',
+    fontWeight: '600',
+  },
+  settingSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+    marginHorizontal: 24,
+  },
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  settingItemTouchable: {
+    minHeight: 72,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  settingItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  settingIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  settingContent: {
+    flex: 1,
+  },
+  settingTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  settingSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    lineHeight: 20,
+  },
+  settingControl: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    minWidth: 48,
+  },
+  selectContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1E40AF',
+    marginRight: 8,
+  },
+  appInfo: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+  },
+  appVersion: {
+    fontSize: 16,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  appCopyright: {
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+});
           )}
           
           {item.type === 'select' && (

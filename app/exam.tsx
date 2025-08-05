@@ -8,6 +8,16 @@ import { storage } from '@/utils/storage';
 import { Question } from '@/types/question';
 import { Dialog } from '@/components/Dialog';
 import { useSpeech } from '@/hooks/useSpeech';
+import { useHaptics } from '@/hooks/useHaptics';
+import { FadeInView } from '@/components/FadeInView';
+import { AnimatedButton } from '@/components/AnimatedButton';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
+
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 export default function ExamScreen() {
   const router = useRouter();
@@ -18,6 +28,7 @@ export default function ExamScreen() {
   const [showResult, setShowResult] = useState(false);
   const [showFinishDialog, setShowFinishDialog] = useState(false);
   const speech = useSpeech();
+  const haptics = useHaptics();
 
   const currentQuestion = questions[currentQuestionIndex];
 
@@ -38,6 +49,7 @@ export default function ExamScreen() {
   };
 
   const handleAnswer = (answer: string | number) => {
+    haptics.selectionFeedback();
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = answer;
     setAnswers(newAnswers);
@@ -55,12 +67,14 @@ export default function ExamScreen() {
     }
   }, [currentQuestionIndex, currentQuestion, speech]);
   const nextQuestion = () => {
+    haptics.lightImpact();
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
 
   const previousQuestion = () => {
+    haptics.lightImpact();
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
     }
@@ -108,10 +122,12 @@ export default function ExamScreen() {
   };
 
   const confirmFinish = () => {
+    haptics.mediumImpact();
     setShowFinishDialog(true);
   };
 
   const handleFinishConfirm = () => {
+    haptics.heavyImpact();
     setShowFinishDialog(false);
     finishExam();
   };
@@ -133,9 +149,13 @@ export default function ExamScreen() {
           <View style={[styles.resultCard, passed ? styles.passedCard : styles.failedCard]}>
             <View style={styles.resultIcon}>
               {passed ? (
-                <CheckCircle size={64} color="#16A34A" strokeWidth={2} />
+                <Animated.View>
+                  <CheckCircle size={64} color="#16A34A" strokeWidth={2} />
+                </Animated.View>
               ) : (
-                <X size={64} color="#DC2626" strokeWidth={2} />
+                <Animated.View>
+                  <X size={64} color="#DC2626" strokeWidth={2} />
+                </Animated.View>
               )}
             </View>
             
@@ -163,38 +183,43 @@ export default function ExamScreen() {
             </View>
 
             <View style={styles.resultActions}>
-              <TouchableOpacity
-                style={[styles.resultButton, styles.retakeButton]}
+              <AnimatedButton
+                title="再考一次"
                 onPress={() => {
+                  haptics.mediumImpact();
                   setCurrentQuestionIndex(0);
                   setAnswers(new Array(20).fill(null));
                   setTimeLeft(20 * 60);
                   setShowResult(false);
                 }}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.retakeButtonText}>再考一次</Text>
-              </TouchableOpacity>
+                variant="primary"
+                hapticType="medium"
+                style={{ flex: 1, marginRight: 8 }}
+              />
               
-              <TouchableOpacity
-                style={[styles.resultButton, styles.homeButton]}
-                onPress={() => router.push('/')}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.homeButtonText}>返回首页</Text>
-              </TouchableOpacity>
+              <AnimatedButton
+                title="返回首页"
+                onPress={() => {
+                  haptics.lightImpact();
+                  router.push('/');
+                }}
+                variant="secondary"
+                hapticType="light"
+                style={{ flex: 1, marginLeft: 8 }}
+              />
             </View>
 
             {questions.filter((_, index) => answers[index] !== questions[index].correctAnswer).length > 0 && (
-              <TouchableOpacity
-                style={styles.errorsButton}
-                onPress={() => router.push('/errors')}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.errorsButtonText}>
-                  查看错题解析 ({questions.filter((_, index) => answers[index] !== questions[index].correctAnswer).length}题)
-                </Text>
-              </TouchableOpacity>
+              <AnimatedButton
+                title={`查看错题解析 (${questions.filter((_, index) => answers[index] !== questions[index].correctAnswer).length}题)`}
+                onPress={() => {
+                  haptics.mediumImpact();
+                  router.push('/errors');
+                }}
+                variant="warning"
+                hapticType="medium"
+                style={{ width: '100%', marginTop: 16 }}
+              />
             )}
           </View>
         </View>
@@ -225,8 +250,8 @@ export default function ExamScreen() {
       </View>
 
       {/* Question */}
-      <View style={styles.questionContainer}>
-        <View style={styles.questionCard}>
+      <FadeInView style={styles.questionContainer}>
+        <FadeInView delay={200} style={styles.questionCard}>
           <Text style={styles.questionNumber}>
             第 {currentQuestionIndex + 1} 题
           </Text>
@@ -247,7 +272,7 @@ export default function ExamScreen() {
           <View style={styles.optionsContainer}>
             {currentQuestion?.type === 'judgment' ? (
               <View style={styles.judgmentOptions}>
-                <TouchableOpacity
+                <AnimatedTouchableOpacity
                   style={[
                     styles.judgmentButton,
                     answers[currentQuestionIndex] === true && styles.selectedOption
@@ -261,9 +286,9 @@ export default function ExamScreen() {
                   ]}>
                     正确
                   </Text>
-                </TouchableOpacity>
+                </AnimatedTouchableOpacity>
                 
-                <TouchableOpacity
+                <AnimatedTouchableOpacity
                   style={[
                     styles.judgmentButton,
                     answers[currentQuestionIndex] === false && styles.selectedOption
@@ -277,12 +302,12 @@ export default function ExamScreen() {
                   ]}>
                     错误
                   </Text>
-                </TouchableOpacity>
+                </AnimatedTouchableOpacity>
               </View>
             ) : (
               <View style={styles.multipleChoiceOptions}>
                 {currentQuestion?.options?.map((option, index) => (
-                  <TouchableOpacity
+                  <AnimatedTouchableOpacity
                     key={index}
                     style={[
                       styles.optionButton,
@@ -297,46 +322,41 @@ export default function ExamScreen() {
                     ]}>
                       {option}
                     </Text>
-                  </TouchableOpacity>
+                  </AnimatedTouchableOpacity>
                 ))}
               </View>
             )}
           </View>
-        </View>
-      </View>
+        </FadeInView>
+      </FadeInView>
 
       {/* Navigation */}
       <View style={styles.navigationContainer}>
-        <TouchableOpacity
-          style={[styles.navButton, currentQuestionIndex === 0 && styles.navButtonDisabled]}
+        <AnimatedButton
+          title="上一题"
           onPress={previousQuestion}
           disabled={currentQuestionIndex === 0}
-          activeOpacity={0.8}
-        >
-          <Text style={[
-            styles.navButtonText,
-            currentQuestionIndex === 0 && styles.navButtonTextDisabled
-          ]}>
-            上一题
-          </Text>
-        </TouchableOpacity>
+          variant={currentQuestionIndex === 0 ? 'secondary' : 'primary'}
+          hapticType="light"
+          style={{ flex: 1, marginRight: 8 }}
+        />
 
         {currentQuestionIndex === questions.length - 1 ? (
-          <TouchableOpacity
-            style={[styles.navButton, styles.finishButton]}
+          <AnimatedButton
+            title="交卷"
             onPress={confirmFinish}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.finishButtonText}>交卷</Text>
-          </TouchableOpacity>
+            variant="success"
+            hapticType="heavy"
+            style={{ flex: 1, marginLeft: 8 }}
+          />
         ) : (
-          <TouchableOpacity
-            style={styles.navButton}
+          <AnimatedButton
+            title="下一题"
             onPress={nextQuestion}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.navButtonText}>下一题</Text>
-          </TouchableOpacity>
+            variant="primary"
+            hapticType="light"
+            style={{ flex: 1, marginLeft: 8 }}
+          />
         )}
       </View>
       </SafeAreaView>
@@ -490,34 +510,6 @@ const styles = StyleSheet.create({
     borderTopColor: '#E5E7EB',
     gap: 16,
   },
-  navButton: {
-    flex: 1,
-    backgroundColor: '#1E40AF',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 56,
-  },
-  navButtonDisabled: {
-    backgroundColor: '#E2E8F0',
-  },
-  navButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  navButtonTextDisabled: {
-    color: '#94A3B8',
-  },
-  finishButton: {
-    backgroundColor: '#16A34A',
-  },
-  finishButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
   resultContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -584,45 +576,6 @@ const styles = StyleSheet.create({
   resultActions: {
     flexDirection: 'row',
     width: '100%',
-    gap: 16,
     marginBottom: 16,
-  },
-  resultButton: {
-    flex: 1,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  retakeButton: {
-    backgroundColor: '#1E40AF',
-  },
-  retakeButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  homeButton: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  homeButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  errorsButton: {
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    width: '100%',
-  },
-  errorsButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#DC2626',
   },
 });

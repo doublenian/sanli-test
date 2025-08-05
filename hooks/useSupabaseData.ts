@@ -279,6 +279,7 @@ const USER_SETTINGS_KEY = 'user_settings';
 const DEFAULT_SETTINGS = {
   font_size: 'large',
   voice_enabled: true,
+  haptics_enabled: true,
   language: 'chinese',
   theme: 'light',
   auto_play_voice: true,
